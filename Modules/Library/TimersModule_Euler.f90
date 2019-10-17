@@ -19,26 +19,28 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_InputOutput
   REAL(DP), PUBLIC :: Timer_Euler_Finalize
 
+  ! --- DG discretization-specific ---
+  REAL(DP), PUBLIC :: Timer_Euler_Increment
+  REAL(DP), PUBLIC :: Timer_Euler_dgDiscretization
+  REAL(DP), PUBLIC :: Timer_Euler_Divergence
+  REAL(DP), PUBLIC :: Timer_Euler_Geometry
+  REAL(DP), PUBLIC :: Timer_Euler_Gravity
+  REAL(DP), PUBLIC :: Timer_Euler_SurfaceTerm
+  REAL(DP), PUBLIC :: Timer_Euler_NumericalFlux
+  REAL(DP), PUBLIC :: Timer_Euler_VolumeTerm
+  REAL(DP), PUBLIC :: Timer_Euler_ComputePrimitive
+
+  ! --- GPU ---
+  REAL(DP), PUBLIC :: Timer_Euler_CopyIn
+  REAL(DP), PUBLIC :: Timer_Euler_Permute
+  REAL(DP), PUBLIC :: Timer_Euler_Interpolate
+  REAL(DP), PUBLIC :: Timer_Euler_CopyOut
+
   ! --- Limiter-specific ---
   REAL(DP), PUBLIC :: Timer_Euler_PositivityLimiter
   REAL(DP), PUBLIC :: Timer_Euler_SlopeLimiter
   REAL(DP), PUBLIC :: Timer_Euler_TroubledCellIndicator
   REAL(DP), PUBLIC :: Timer_Euler_CharacteristicDecomposition
-
-  ! --- DG discretization-specific ---
-  REAL(DP), PUBLIC :: Timer_Euler_Increment
-  REAL(DP), PUBLIC :: Timer_Euler_dgDiscretization
-  REAL(DP), PUBLIC :: Timer_Euler_CopyIn
-  REAL(DP), PUBLIC :: Timer_Euler_Divergence
-  REAL(DP), PUBLIC :: Timer_Euler_Geometry
-  REAL(DP), PUBLIC :: Timer_Euler_Gravity
-  REAL(DP), PUBLIC :: Timer_Euler_Permute
-  REAL(DP), PUBLIC :: Timer_Euler_Interpolate
-  REAL(DP), PUBLIC :: Timer_Euler_SurfaceTerm
-  REAL(DP), PUBLIC :: Timer_Euler_VolumeTerm
-  REAL(DP), PUBLIC :: Timer_Euler_CopyOut
-
-  REAL(DP), PUBLIC :: Timer_Euler_ComputePrimitive
 
   PUBLIC :: InitializeTimers_Euler
   PUBLIC :: FinalizeTimers_Euler
@@ -63,18 +65,19 @@ CONTAINS
     Timer_Euler_Finalize        = Zero
 
     Timer_Euler_dgDiscretization = Zero
-    Timer_Euler_CopyIn           = Zero
     Timer_Euler_Divergence       = Zero
     Timer_Euler_Geometry         = Zero
     Timer_Euler_Gravity          = Zero
-    Timer_Euler_Permute          = Zero
-    Timer_Euler_Interpolate      = Zero
     Timer_Euler_SurfaceTerm      = Zero
+    Timer_Euler_NumericalFlux    = Zero
     Timer_Euler_VolumeTerm       = Zero
     Timer_Euler_Increment        = Zero
-    Timer_Euler_CopyOut          = Zero
-
     Timer_Euler_ComputePrimitive = Zero
+
+    Timer_Euler_CopyIn           = Zero
+    Timer_Euler_Permute          = Zero
+    Timer_Euler_Interpolate      = Zero
+    Timer_Euler_CopyOut          = Zero
 
     Timer_Euler_PositivityLimiter           = Zero
     Timer_Euler_SlopeLimiter                = Zero
@@ -192,8 +195,8 @@ CONTAINS
     IF( Verbose )THEN
 
       WRITE(*,*)
-      WRITE(*,TRIM(Label_Level1)) 'DG discretization-specific'
-      WRITE(*,TRIM(Label_Level1)) '--------------------------'
+      WRITE(*,TRIM(Label_Level1)) 'DG discretization'
+      WRITE(*,TRIM(Label_Level1)) '-----------------'
       TotalTime = Timer_Euler_Divergence &
                   + Timer_Euler_Geometry &
                   + Timer_Euler_Gravity
@@ -238,6 +241,13 @@ CONTAINS
         100.0_DP &
           * Timer_Euler_SurfaceTerm / Timer_Euler_Program, ' % === ', &
         100.0_DP * Timer_Euler_SurfaceTerm / Timer_Euler_Divergence, ' %'
+
+      WRITE(*,TRIM(TimeAux)) &
+        'Numerical Flux:    ', &
+        Timer_Euler_NumericalFlux, ' s = ', &
+        100.0_DP &
+          * Timer_Euler_NumericalFlux / Timer_Euler_Program, ' % === ', &
+        100.0_DP * Timer_Euler_NumericalFlux / Timer_Euler_Divergence, ' %'
 
       WRITE(*,TRIM(TimeAux)) &
         'Volume Term:       ', &

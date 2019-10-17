@@ -13,17 +13,18 @@ MODULE Euler_dgDiscretizationModule
     TimersStart_Euler, &
     TimersStop_Euler, &
     Timer_Euler_dgDiscretization, &
-    Timer_Euler_CopyIn, &
     Timer_Euler_Divergence, &
     Timer_Euler_Geometry, &
     Timer_Euler_Gravity, &
-    Timer_Euler_Permute, &
-    Timer_Euler_Interpolate, &
     Timer_Euler_SurfaceTerm, &
+    Timer_Euler_NumericalFlux, &
     Timer_Euler_VolumeTerm, &
     Timer_Euler_Increment, &
-    Timer_Euler_CopyOut, &
-    Timer_Euler_ComputePrimitive
+    Timer_Euler_ComputePrimitive, &
+    Timer_Euler_CopyIn, &
+    Timer_Euler_Permute, &
+    Timer_Euler_Interpolate, &
+    Timer_Euler_CopyOut
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
   USE ReferenceElementModuleX, ONLY: &
@@ -604,6 +605,8 @@ CONTAINS
                 G_F(iNodeX_X1,iGF_Alpha,   iX2,iX3,iX1), &
                 G_F(iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
 
+        CALL TimersStart_Euler( Timer_Euler_NumericalFlux )
+
         AlphaMns &
           = MAX( Zero, &
                  MAXVAL( - EigVals_L(1:nCF) ), &
@@ -646,6 +649,8 @@ CONTAINS
                 P_R,                                     &
                 G_F(iNodeX_X1,iGF_Alpha   ,iX2,iX3,iX1), &
                 G_F(iNodeX_X1,iGF_Beta_1  ,iX2,iX3,iX1) )
+
+        CALL TimersStop_Euler( Timer_Euler_NumericalFlux )
 
         DO iCF = 1, nCF
 
@@ -1187,6 +1192,8 @@ CONTAINS
                 G_F(iNodeX_X2,iGF_Alpha,   iX1,iX3,iX2), &
                 G_F(iNodeX_X2,iGF_Beta_2,  iX1,iX3,iX2) )
 
+        CALL TimersStart_Euler( Timer_Euler_NumericalFlux )
+
         AlphaMns &
           = MAX( Zero, &
                  MAXVAL( - EigVals_L(1:nCF) ), &
@@ -1229,6 +1236,8 @@ CONTAINS
                 P_R,                                     &
                 G_F(iNodeX_X2,iGF_Alpha   ,iX1,iX3,iX2), &
                 G_F(iNodeX_X2,iGF_Beta_2  ,iX1,iX3,iX2) )
+
+        CALL TimersStop_Euler( Timer_Euler_NumericalFlux )
 
         DO iCF = 1, nCF
 
