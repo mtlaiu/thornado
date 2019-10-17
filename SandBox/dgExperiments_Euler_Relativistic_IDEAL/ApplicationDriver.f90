@@ -99,13 +99,13 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-!  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
 !  ProgramName = 'KelvinHelmholtz_Relativistic'
 !  ProgramName = 'KelvinHelmholtz'
-  ProgramName = 'StandingAccretionShock'
+!  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -117,7 +117,7 @@ PROGRAM ApplicationDriver
 
         CASE( 'Sod' )
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.1d0
+          t_end = 0.2d0
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'MBProblem1' )
@@ -428,7 +428,8 @@ PROGRAM ApplicationDriver
   CALL InitializeTally_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           SuppressTally_Option = .TRUE. )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -486,6 +487,7 @@ PROGRAM ApplicationDriver
     END IF
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
+    wrt = .FALSE.
     IF( wrt )THEN
 
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
