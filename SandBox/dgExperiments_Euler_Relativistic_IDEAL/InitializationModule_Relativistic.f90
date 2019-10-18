@@ -86,6 +86,10 @@ CONTAINS
 
          CALL InitializeFields_KelvinHelmholtz_Relativistic
 
+      CASE( 'KelvinHelmholtz_Relativistic_3D' )
+
+         CALL InitializeFields_KelvinHelmholtz_Relativistic_3D
+
       CASE( 'KelvinHelmholtz' )
 
          CALL InitializeFields_KelvinHelmholtz
@@ -717,6 +721,91 @@ CONTAINS
 
 
   END SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic
+
+
+  ! --- Relativistic 3D Kelvin-Helmholtz instability a la
+  !     Beckwith & Stone (2011), ApjS, 193, 6 (typo in Eq. (63)) ---
+  SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic_3D
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2
+    REAL(DP) :: rho0, rho1
+    REAL(DP) :: Vshear, a, X2_Offset, sigma, A0, Vz
+
+    rho0 = 0.505d0
+    rho1 = 0.495d0
+
+    Vshear    = 0.5d0
+    a         = 0.01d0
+    X2_Offset = 0.5d0
+    sigma     = 0.1d0
+
+    A0 = 0.1d0
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        ! --- Top ---
+        IF( X2 .GT. 0.0d0 )THEN
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+            = rho0 + rho1 * TANH( ( X2 - X2_Offset ) / a )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = Vshear      * TANH( ( X2 - X2_Offset ) / a )
+
+          ! --- This is where the typo is. The following expression is
+          !     taken from Radice & Rezzolla, 2012, AA, 547, A26, Eq. (48) ---
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+            = A0 * Vshear * SIN( 2.0d0 * Pi * X1 ) &
+                * EXP( -( ( X2 - X2_Offset ) / sigma )**2 )
+
+        ! --- Bottom ---
+        ELSE
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+            = rho0 - rho1 * TANH( ( X2 + X2_Offset ) / a )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+            = -Vshear     * TANH( ( X2 + X2_Offset ) / a )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+            = -A0 * Vshear * SIN( 2.0d0 * Pi * X1 ) &
+                * EXP( -( ( X2 + X2_Offset ) / sigma )**2 )
+
+         END IF
+
+        CALL RANDOM_NUMBER( Vz )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 1.0d-2 * Vz
+        uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0d0
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+          = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
+      END DO
+
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
+    END DO
+
+
+  END SUBROUTINE InitializeFields_KelvinHelmholtz_Relativistic_3D
 
 
   SUBROUTINE InitializeFields_KelvinHelmholtz

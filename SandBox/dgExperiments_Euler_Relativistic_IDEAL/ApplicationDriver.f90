@@ -105,7 +105,8 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
-  ProgramName = 'KelvinHelmholtz_Relativistic'
+!  ProgramName = 'KelvinHelmholtz_Relativistic'
+  ProgramName = 'KelvinHelmholtz_Relativistic_3D'
 !  ProgramName = 'KelvinHelmholtz'
 !  ProgramName = 'StandingAccretionShock'
 
@@ -233,6 +234,20 @@ PROGRAM ApplicationDriver
 
        t_end = 1.0d-1
 
+    CASE( 'KelvinHelmholtz_Relativistic_3D' )
+
+       CoordinateSystem = 'CARTESIAN'
+
+       Gamma = 4.0d0 / 3.0d0
+
+       nX = [ 16, 32, 16 ]
+       xL = [ -0.5d0, -1.0d0, -0.5d0 ]
+       xR = [ +0.5d0, +1.0d0, +0.5d0 ]
+
+       bcX = [ 1, 1, 1 ]
+
+       t_end = 1.0d-1
+
     CASE( 'KelvinHelmholtz' )
 
        CoordinateSystem = 'CARTESIAN'
@@ -274,15 +289,17 @@ PROGRAM ApplicationDriver
     CASE DEFAULT
 
       WRITE(*,*)
-      WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
-      WRITE(*,'(A)')     'Valid choices:'
-      WRITE(*,'(A)')     '  RiemannProblem'
-      WRITE(*,'(A)')     '  RiemannProblem2d'
-      WRITE(*,'(A)')     '  SphericalRiemannProblem'
-      WRITE(*,'(A)')     '  SphericalSedov'
-      WRITE(*,'(A)')     '  KelvinHelmholtz2D_Relativistic'
-      WRITE(*,'(A)')     '  StandingAccretionShock'
-      WRITE(*,'(A)')     'Stopping...'
+      WRITE(*,'(2x,A,A)')   'Invalid ProgramName: ', ProgramName
+      WRITE(*,'(2x,A)')     'Valid choices:'
+      WRITE(*,'(4x,A)')       'RiemannProblem'
+      WRITE(*,'(4x,A)')         'RiemannProblem2d'
+      WRITE(*,'(4x,A)')         'SphericalRiemannProblem'
+      WRITE(*,'(4x,A)')         'SphericalSedov'
+      WRITE(*,'(4x,A)')         'KelvinHelmholtz_Relativistic'
+      WRITE(*,'(4x,A)')         'KelvinHelmholtz_Relativistic_3D'
+      WRITE(*,'(4x,A)')         'KelvinHelmholtz'
+      WRITE(*,'(4x,A)')         'StandingAccretionShock'
+      WRITE(*,'(2x,A)')     'Stopping...'
       STOP
 
   END SELECT
