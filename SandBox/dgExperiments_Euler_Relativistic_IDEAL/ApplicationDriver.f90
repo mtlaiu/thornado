@@ -105,8 +105,8 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
-!  ProgramName = 'KelvinHelmholtz_Relativistic'
-  ProgramName = 'KelvinHelmholtz_Relativistic_3D'
+  ProgramName = 'KelvinHelmholtz_Relativistic'
+!  ProgramName = 'KelvinHelmholtz_Relativistic_3D'
 !  ProgramName = 'KelvinHelmholtz'
 !  ProgramName = 'StandingAccretionShock'
 
