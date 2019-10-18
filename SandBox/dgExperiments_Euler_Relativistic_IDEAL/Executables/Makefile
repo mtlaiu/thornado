@@ -1,9 +1,19 @@
 MACHINE = $(THORNADO_MACHINE)
 
+include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
+
+.DEFAULT_GOAL := all
+
 HYDRO                = RELATIVISTIC
 HYDRO_RIEMANN_SOLVER = HLL
 
 OPT_LEVEL = DEBUG
 FLAGS     = $(FLAGS_$(OPT_LEVEL))
+
+USE_GPU    ?= TRUE
+USE_OMP_OL ?= FALSE
+USE_OACC   ?= TRUE
+USE_CUBLAS ?= TRUE
+USE_MAGMA  ?= FALSE
 
 include ../Makefile
