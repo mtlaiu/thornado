@@ -9,21 +9,22 @@ MODULE Euler_dgDiscretizationModule
     Half, One
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDimsX
-  USE TimersModule_Euler,  ONLY: &
-    TimersStart_Euler,            &
-    TimersStop_Euler,             &
-    Timer_Euler_dgDiscretization, &
-    Timer_Euler_Divergence,       &
-    Timer_Euler_Geometry,         &
-    Timer_Euler_Gravity,          &
-    Timer_Euler_SurfaceTerm,      &
-    Timer_Euler_NumericalFlux,    &
-    Timer_Euler_VolumeTerm,       &
-    Timer_Euler_Increment,        &
-    Timer_Euler_ComputePrimitive, &
-    Timer_Euler_CopyIn,           &
-    Timer_Euler_Permute,          &
-    Timer_Euler_Interpolate,      &
+  USE TimersModule_Euler,  ONLY:      &
+    TimersStart_Euler,                &
+    TimersStop_Euler,                 &
+    Timer_Euler_dgDiscretization,     &
+    Timer_Euler_Divergence,           &
+    Timer_Euler_Geometry,             &
+    Timer_Euler_Gravity,              &
+    Timer_Euler_SurfaceTerm,          &
+    Timer_Euler_NumericalFlux,        &
+    Timer_Euler_VolumeTerm,           &
+    Timer_Euler_Increment,            &
+    Timer_Euler_ComputePrimitive,     &
+    Timer_Euler_ComputeFromPrimitive, &
+    Timer_Euler_CopyIn,               &
+    Timer_Euler_Permute,              &
+    Timer_Euler_Interpolate,          &
     Timer_Euler_CopyOut
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
@@ -499,7 +500,9 @@ CONTAINS
       DO iNodeX_X1 = 1, nDOFX_X1
 
         ! --- Left State Primitive, etc. ---
+
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_L(iNodeX_X1,iCF_D ,iX2,iX3,iX1),     &
                  uCF_L(iNodeX_X1,iCF_S1,iX2,iX3,iX1),     &
@@ -516,13 +519,18 @@ CONTAINS
                  G_F(iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
                  G_F(iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
                  G_F(iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        CALL TimersStart_Euler( Timer_Euler_ComputeFromPrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), P_L  )
 
         CALL ComputeSoundSpeedFromPrimitive &
                ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), Cs_L )
+
+        CALL TimersStop_Euler( Timer_Euler_ComputeFromPrimitive )
 
         EigVals_L(1:nCF) = Eigenvalues_Euler &
                              ( uPF_L(iPF_V1),                             &
@@ -553,7 +561,9 @@ CONTAINS
                 G_F(iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
 
         ! --- Right State Primitive, etc. ---
+
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_R(iNodeX_X1,iCF_D ,iX2,iX3,iX1),     &
                  uCF_R(iNodeX_X1,iCF_S1,iX2,iX3,iX1),     &
@@ -570,13 +580,18 @@ CONTAINS
                  G_F(iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
                  G_F(iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
                  G_F(iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        CALL TimersStart_Euler( Timer_Euler_ComputeFromPrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), P_R  )
 
         CALL ComputeSoundSpeedFromPrimitive &
                ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), Cs_R )
+
+        CALL TimersStop_Euler( Timer_Euler_ComputeFromPrimitive )
 
         EigVals_R(1:nCF) = Eigenvalues_Euler &
                              ( uPF_R(iPF_V1),                             &
@@ -714,6 +729,7 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_K(iNodeX,iCF_D ,iX2,iX3,iX1),     &
                  uCF_K(iNodeX,iCF_S1,iX2,iX3,iX1),     &
@@ -730,10 +746,15 @@ CONTAINS
                  G_K(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1), &
                  G_K(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1), &
                  G_K(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        CALL TimersStart_Euler( Timer_Euler_ComputeFromPrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K )
+
+        CALL TimersStop_Euler( Timer_Euler_ComputeFromPrimitive )
 
         Flux_X1_K(1:nCF) &
           = Flux_X1_Euler &
@@ -1086,7 +1107,9 @@ CONTAINS
       DO iNodeX_X2 = 1, nDOFX_X2
 
         ! --- Left State Primitive, etc. ---
+
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_L(iNodeX_X2,iCF_D ,iX1,iX3,iX2),     &
                  uCF_L(iNodeX_X2,iCF_S1,iX1,iX3,iX2),     &
@@ -1103,13 +1126,18 @@ CONTAINS
                  G_F(iNodeX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
                  G_F(iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
                  G_F(iNodeX_X2,iGF_Gm_dd_33,iX1,iX3,iX2) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        CALL TimersStart_Euler( Timer_Euler_ComputeFromPrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), P_L  )
 
         CALL ComputeSoundSpeedFromPrimitive &
                ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), Cs_L )
+
+        CALL TimersStop_Euler( Timer_Euler_ComputeFromPrimitive )
 
         EigVals_L(1:nCF) = Eigenvalues_Euler &
                              ( uPF_L(iPF_V2),                             &
@@ -1140,7 +1168,9 @@ CONTAINS
                 G_F(iNodeX_X2,iGF_Beta_2,  iX1,iX3,iX2) )
 
         ! --- Right State Primitive, etc. ---
+
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_R(iNodeX_X2,iCF_D ,iX1,iX3,iX2),     &
                  uCF_R(iNodeX_X2,iCF_S1,iX1,iX3,iX2),     &
@@ -1157,13 +1187,18 @@ CONTAINS
                  G_F(iNodeX_X2,iGF_Gm_dd_11,iX1,iX3,iX2), &
                  G_F(iNodeX_X2,iGF_Gm_dd_22,iX1,iX3,iX2), &
                  G_F(iNodeX_X2,iGF_Gm_dd_33,iX1,iX3,iX2) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        CALL TimersStart_Euler( Timer_Euler_ComputeFromPrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), P_R  )
 
         CALL ComputeSoundSpeedFromPrimitive &
                ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), Cs_R )
+
+        CALL TimersStop_Euler( Timer_Euler_ComputeFromPrimitive )
 
         EigVals_R(1:nCF) = Eigenvalues_Euler &
                              ( uPF_R(iPF_V2),                             &
@@ -1302,6 +1337,7 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_K(iNodeX,iCF_D ,iX1,iX3,iX2),     &
                  uCF_K(iNodeX,iCF_S1,iX1,iX3,iX2),     &
@@ -1318,10 +1354,15 @@ CONTAINS
                  G_K(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2), &
                  G_K(iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2), &
                  G_K(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        CALL TimersStart_Euler( Timer_Euler_ComputeFromPrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K )
+
+        CALL TimersStop_Euler( Timer_Euler_ComputeFromPrimitive )
 
         Flux_X2_K(1:nCF) &
           = Flux_X2_Euler &
@@ -1674,7 +1715,9 @@ CONTAINS
       DO iNodeX_X3 = 1, nDOFX_X3
 
         ! --- Left State Primitive, etc. ---
+
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_L(iNodeX_X3,iCF_D ,iX1,iX2,iX3),     &
                  uCF_L(iNodeX_X3,iCF_S1,iX1,iX2,iX3),     &
@@ -1691,13 +1734,18 @@ CONTAINS
                  G_F(iNodeX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
                  G_F(iNodeX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
                  G_F(iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        CALL TimersStart_Euler( Timer_Euler_ComputeFromPrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), P_L  )
 
         CALL ComputeSoundSpeedFromPrimitive &
                ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), Cs_L )
+
+        CALL TimersStop_Euler( Timer_Euler_ComputeFromPrimitive )
 
         EigVals_L(1:nCF) = Eigenvalues_Euler &
                              ( uPF_L(iPF_V3),                             &
@@ -1728,7 +1776,9 @@ CONTAINS
                 G_F(iNodeX_X3,iGF_Beta_3,  iX1,iX2,iX3) )
 
         ! --- Right State Primitive, etc. ---
+
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_R(iNodeX_X3,iCF_D ,iX1,iX2,iX3),     &
                  uCF_R(iNodeX_X3,iCF_S1,iX1,iX2,iX3),     &
@@ -1745,13 +1795,18 @@ CONTAINS
                  G_F(iNodeX_X3,iGF_Gm_dd_11,iX1,iX2,iX3), &
                  G_F(iNodeX_X3,iGF_Gm_dd_22,iX1,iX2,iX3), &
                  G_F(iNodeX_X3,iGF_Gm_dd_33,iX1,iX2,iX3) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        CALL TimersStart_Euler( Timer_Euler_ComputeFromPrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), P_R  )
 
         CALL ComputeSoundSpeedFromPrimitive &
                ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), Cs_R )
+
+        CALL TimersStop_Euler( Timer_Euler_ComputeFromPrimitive )
 
         EigVals_R(1:nCF) = Eigenvalues_Euler &
                              ( uPF_R(iPF_V3),                             &
@@ -1890,6 +1945,7 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
+
         CALL ComputePrimitive_Euler &
                ( uCF_K(iNodeX,iCF_D ,iX1,iX2,iX3),     &
                  uCF_K(iNodeX,iCF_S1,iX1,iX2,iX3),     &
@@ -1906,10 +1962,15 @@ CONTAINS
                  G_K(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3), &
                  G_K(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3), &
                  G_K(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) )
+
         CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
+
+        CALL TimersStart_Euler( Timer_Euler_ComputeFromPrimitive )
 
         CALL ComputePressureFromPrimitive &
                ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), P_K )
+
+        CALL TimersStop_Euler( Timer_Euler_ComputeFromPrimitive )
 
         Flux_X3_K(1:nCF) &
           = Flux_X3_Euler &
