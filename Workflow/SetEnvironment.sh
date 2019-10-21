@@ -165,12 +165,12 @@ elif [[ $THORNADO_MACHINE == ascent_pgi ]]; then
 
   echo
 
-  module load pgi
+  module load pgi/19.4
   module load spectrum-mpi 
-  module load cuda
-  module load hdf5
+  module load hdf5/1.10.3
+  module load netlib-lapack/3.8.0
   module load essl
-  module load netlib-lapack
+  module load cuda
 
 elif [[ $THORNADO_MACHINE == darter_gnu ]]; then
 
