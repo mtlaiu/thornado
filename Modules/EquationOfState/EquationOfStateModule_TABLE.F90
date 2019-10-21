@@ -1,5 +1,5 @@
 #ifdef THORNADO_DEBUG
-#define THORNADO_DEBUG_EOS
+!#define THORNADO_DEBUG_EOS
 #endif
 
 MODULE EquationOfStateModule_TABLE
