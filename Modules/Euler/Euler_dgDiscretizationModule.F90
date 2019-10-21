@@ -480,17 +480,19 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP PRIVATE( Flux_X1_L, Flux_X1_R, P_L, P_R, Cs_L, Cs_R, &
-    !$OMP          uPF_L, uPF_R, alpha )
+    !$OMP          uPF_L, uPF_R )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+!!$    !$ACC PARALLEL LOOP SEQ &
     !$ACC PRIVATE( Flux_X1_L, Flux_X1_R, P_L, P_R, Cs_L, Cs_R, &
-    !$ACC          uPF_L, uPF_R, alpha ) &
+    !$ACC          EigVals_L, EigVals_R, uPF_L, uPF_R,  &
+    !$ACC          AlphaMns, AlphaPls, AlphaMdl ) &
     !$ACC PRESENT( uCF_L, uCF_R, NumericalFlux, G_F, dX2, dX3, WeightsX_X1, &
     !$ACC          iX_B0, iX_E0 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( Flux_X1_L, Flux_X1_R, P_L, P_R, Cs_L, Cs_R, &
-    !$OMP          uPF_L, uPF_R, alpha )
+    !$OMP          uPF_L, uPF_R )
 #endif
     DO iX1 = iX_B0(1), iX_E0(1) + 1
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -524,20 +526,21 @@ CONTAINS
         CALL ComputeSoundSpeedFromPrimitive &
                ( uPF_L(iPF_D), uPF_L(iPF_E), uPF_L(iPF_Ne), Cs_L )
 
-        EigVals_L(1:nCF) = Eigenvalues_Euler &
-                             ( uPF_L(iPF_V1),                             &
-                               Cs_L,                                      &
-                               G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-                               uPF_L(iPF_V1),                             &
-                               uPF_L(iPF_V2),                             &
-                               uPF_L(iPF_V3),                             &
-                               G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-                               G_F  (iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
-                               G_F  (iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
-                               G_F  (iNodeX_X1,iGF_Alpha,   iX2,iX3,iX1), &
-                               G_F  (iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
+        EigVals_L &
+          = Eigenvalues_Euler &
+              ( uPF_L(iPF_V1),                             &
+                Cs_L,                                      &
+                G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+                uPF_L(iPF_V1),                             &
+                uPF_L(iPF_V2),                             &
+                uPF_L(iPF_V3),                             &
+                G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+                G_F  (iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
+                G_F  (iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
+                G_F  (iNodeX_X1,iGF_Alpha,   iX2,iX3,iX1), &
+                G_F  (iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
 
-        Flux_X1_L(1:nCF) &
+        Flux_X1_L &
           = Flux_X1_Euler &
               ( uPF_L(iPF_D ),                           &
                 uPF_L(iPF_V1),                           &
@@ -551,6 +554,16 @@ CONTAINS
                 G_F(iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
                 G_F(iNodeX_X1,iGF_Alpha,   iX2,iX3,iX1), &
                 G_F(iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
+
+!#ifdef THORNADO_DEBUG_EULER
+!        PRINT*, "iX1, iX2, iX3 = ", iX1, iX2, iX3
+!        PRINT*, "(D,V1,V2,V3,E,Ne)_L, P_L, Cs_L = ", &
+!          uPF_L(iPF_D), uPF_L(iPF_V1), uPF_L(iPF_V3), uPF_L(iPF_V3), uPF_L(iPF_E), uPF_L(iPF_Ne), &
+!          P_L, Cs_L
+!        PRINT*, "Flux_X1_L = ", &
+!          Flux_X1_L(iCF_D), Flux_X1_L(iCF_S1), Flux_X1_L(iCF_S2), Flux_X1_L(iCF_S3), &
+!          Flux_X1_L(iCF_E), Flux_X1_L(iCF_Ne)
+!#endif
 
         ! --- Right State Primitive, etc. ---
 !!$        CALL TimersStart_Euler( Timer_Euler_ComputePrimitive )
@@ -578,20 +591,21 @@ CONTAINS
         CALL ComputeSoundSpeedFromPrimitive &
                ( uPF_R(iPF_D), uPF_R(iPF_E), uPF_R(iPF_Ne), Cs_R )
 
-        EigVals_R(1:nCF) = Eigenvalues_Euler &
-                             ( uPF_R(iPF_V1),                             &
-                               Cs_R,                                      &
-                               G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-                               uPF_R(iPF_V1),                             &
-                               uPF_R(iPF_V2),                             &
-                               uPF_R(iPF_V3),                             &
-                               G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
-                               G_F  (iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
-                               G_F  (iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
-                               G_F  (iNodeX_X1,iGF_Alpha,   iX2,iX3,iX1), &
-                               G_F  (iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
+        EigVals_R &
+          = Eigenvalues_Euler &
+              ( uPF_R(iPF_V1),                             &
+                Cs_R,                                      &
+                G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+                uPF_R(iPF_V1),                             &
+                uPF_R(iPF_V2),                             &
+                uPF_R(iPF_V3),                             &
+                G_F  (iNodeX_X1,iGF_Gm_dd_11,iX2,iX3,iX1), &
+                G_F  (iNodeX_X1,iGF_Gm_dd_22,iX2,iX3,iX1), &
+                G_F  (iNodeX_X1,iGF_Gm_dd_33,iX2,iX3,iX1), &
+                G_F  (iNodeX_X1,iGF_Alpha,   iX2,iX3,iX1), &
+                G_F  (iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
 
-        Flux_X1_R(1:nCF) &
+        Flux_X1_R &
           = Flux_X1_Euler &
               ( uPF_R(iPF_D ),                           &
                 uPF_R(iPF_V1),                           &
@@ -606,16 +620,25 @@ CONTAINS
                 G_F(iNodeX_X1,iGF_Alpha,   iX2,iX3,iX1), &
                 G_F(iNodeX_X1,iGF_Beta_1,  iX2,iX3,iX1) )
 
+!#ifdef THORNADO_DEBUG_EULER
+!        PRINT*, "(D,V1,V2,V3,E,Ne)_R, P_R, Cs_R = ", &
+!          uPF_R(iPF_D), uPF_R(iPF_V1), uPF_R(iPF_V3), uPF_R(iPF_V3), uPF_R(iPF_E), uPF_R(iPF_Ne), &
+!          P_R, Cs_R
+!        PRINT*, "Flux_X1_R = ", &
+!          Flux_X1_R(iCF_D), Flux_X1_R(iCF_S1), Flux_X1_R(iCF_S2), Flux_X1_R(iCF_S3), &
+!          Flux_X1_R(iCF_E), Flux_X1_R(iCF_Ne)
+!#endif
+
 !!$        CALL TimersStart_Euler( Timer_Euler_NumericalFlux )
 
         AlphaMns &
           = MAX( Zero, &
-                 MAXVAL( - EigVals_L(1:nCF) ), &
-                 MAXVAL( - EigVals_R(1:nCF) ) )
+                 MAXVAL( - EigVals_L ), &
+                 MAXVAL( - EigVals_R ) )
         AlphaPls &
           = MAX( Zero, &
-                 MAXVAL( + EigVals_L(1:nCF) ), &
-                 MAXVAL( + EigVals_R(1:nCF) ) )
+                 MAXVAL( + EigVals_L ), &
+                 MAXVAL( + EigVals_R ) )
 
         AlphaMdl &
           = AlphaMiddle_Euler &
@@ -664,6 +687,7 @@ CONTAINS
         END DO
 
       END DO
+
     END DO
     END DO
     END DO
