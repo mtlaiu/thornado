@@ -83,7 +83,6 @@ MODULE Euler_dgDiscretizationModule
 
   PUBLIC :: Euler_ComputeIncrement_DG_Explicit
 
-
 CONTAINS
 
 
@@ -1507,7 +1506,6 @@ CONTAINS
     ! --- Geometry Fields in Element Nodes ---
 
     CALL TimersStart_Euler( Timer_Euler_Permute )
-
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
