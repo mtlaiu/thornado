@@ -106,7 +106,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 08, 08, 01 ]
+      nX = [ 08, 08, 08 ]
       xL = [ 0.0d0, 0.0d0, 0.0d0 ] * Kilometer
       xR = [ 1.0d2, 1.0d2, 1.0d2 ] * Kilometer
 
@@ -126,7 +126,7 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter      = .FALSE.
 
       iCycleD = 10
-      t_end   = 1.0d1 * ( 1.0d5 / SpeedOfLightMKS ) * Second
+      t_end   = 0.25d1 * ( 1.0d5 / SpeedOfLightMKS ) * Second
       dt_wrt  = 1.0d-1 * t_end
 
     CASE( 'RiemannProblem' )
