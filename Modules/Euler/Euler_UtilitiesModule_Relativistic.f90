@@ -75,7 +75,7 @@ CONTAINS
   SUBROUTINE ComputePrimitive_Scalar &
               ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
                 PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, iErr_Option )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -85,12 +85,17 @@ CONTAINS
     REAL(DP), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
     REAL(DP), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
     REAL(DP), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
+    INTEGER,  INTENT(inout), OPTIONAL :: iErr_Option
 
     LOGICAL            :: CONVERGED
     INTEGER, PARAMETER :: MAX_IT = 100
-    INTEGER            :: i, ITERATION, nNodes
+    INTEGER            :: i, ITERATION, nNodes, iErr
     REAL(DP)           :: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
     REAL(DP)           :: FunP, JacP, AF_P
+
+    iErr = 0
+    IF( PRESENT( iErr_Option ) ) &
+      iErr = iErr_Option
 
     q = CF_E + CF_D - SQRT( CF_D**2 &
                               + CF_S1**2 / GF_Gm_dd_11  &
@@ -98,19 +103,19 @@ CONTAINS
                               + CF_S3**2 / GF_Gm_dd_33 )
 
     IF( q .LT. Zero )THEN
-!!$      WRITE(*,*)
-!!$      WRITE(*,'(A)')            'ComputePrimitive_Euler_Relativistic (Scalar)'
-!!$      WRITE(*,'(A)')            '--------------------------------------------'
-!!$      WRITE(*,'(A9,ES18.10E3)') 'q:    ', q
-!!$      WRITE(*,'(A9,ES18.10E3)') 'Gm11: ', GF_Gm_dd_11
-!!$      WRITE(*,'(A9,ES18.10E3)') 'Gm22: ', GF_Gm_dd_22
-!!$      WRITE(*,'(A9,ES18.10E3)') 'Gm33: ', GF_Gm_dd_33
-!!$      WRITE(*,'(A9,ES18.10E3)') 'D:    ', CF_D
-!!$      WRITE(*,'(A9,ES18.10E3)') 'tau:  ', CF_E
-!!$      WRITE(*,'(A9,ES18.10E3)') 'S1:   ', CF_S1
-!!$      WRITE(*,'(A9,ES18.10E3)') 'S2:   ', CF_S2
-!!$      WRITE(*,'(A9,ES18.10E3)') 'S3:   ', CF_S3
-      STOP 'q < 0'
+      PRINT*, ''
+      PRINT*,            'ComputePrimitive_Euler_Relativistic (Scalar)'
+      PRINT*,            '--------------------------------------------'
+      PRINT*, 'q:    ', q
+      PRINT*, 'Gm11: ', GF_Gm_dd_11
+      PRINT*, 'Gm22: ', GF_Gm_dd_22
+      PRINT*, 'Gm33: ', GF_Gm_dd_33
+      PRINT*, 'D:    ', CF_D
+      PRINT*, 'tau:  ', CF_E
+      PRINT*, 'S1:   ', CF_S1
+      PRINT*, 'S2:   ', CF_S2
+      PRINT*, 'S3:   ', CF_S3
+      iErr = -1
     END IF
 
     SSq = CF_S1**2 / GF_Gm_dd_11 &
@@ -235,25 +240,32 @@ CONTAINS
 
     PF_Ne = CF_Ne / W
 
+    iErr_Option = iErr
+
   END SUBROUTINE ComputePrimitive_Scalar
 
 
   SUBROUTINE ComputePrimitive_Vector &
               ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
                 PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+                GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, iErr_Option )
 
     REAL(DP), INTENT(in)  :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
                              CF_E(:), CF_Ne(:)
     REAL(DP), INTENT(out) :: PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), &
                              PF_E(:), PF_Ne(:)
     REAL(DP), INTENT(in)  :: GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
+    INTEGER,  INTENT(inout), OPTIONAL :: iErr_Option
 
     LOGICAL            :: CONVERGED
     INTEGER, PARAMETER :: MAX_IT = 100
-    INTEGER            :: i, ITERATION, nNodes
+    INTEGER            :: i, ITERATION, nNodes, iErr
     REAL(DP)           :: SSq, Pold, vSq, W, h, Pnew, q, Pbisec
     REAL(DP)           :: FunP, JacP, AF_P(SIZE(PF_D))
+
+    iErr = 0
+    IF( PRESENT( iErr_Option ) ) &
+      iErr = iErr_Option
 
     ! --- Loop through all the nodes ---
     nNodes = SIZE( CF_D )
@@ -405,6 +417,7 @@ CONTAINS
 
    END DO ! --- End of loop over nodes ---
 
+   iErr_Option = iErr
 
   END SUBROUTINE ComputePrimitive_Vector
 
@@ -702,7 +715,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in) :: Vi, Cs, Gmii, V1, V2, V3, &
@@ -748,7 +761,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in) :: DL, SL, tauL, F_DL, F_SL, F_tauL, &
@@ -806,7 +819,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
@@ -846,6 +859,11 @@ CONTAINS
   !> @param Shift The first contravariant component of the shift-vector.
   PURE FUNCTION Flux_X2_Euler_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
@@ -884,6 +902,11 @@ CONTAINS
   !> @param Shift The first contravariant component of the shift-vector.
   PURE FUNCTION Flux_X3_Euler_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
@@ -942,7 +965,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     ! --- Local Lax-Friedrichs Flux ---
@@ -969,7 +992,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM
@@ -992,7 +1015,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
@@ -1098,6 +1121,11 @@ CONTAINS
   !> @param Gm22 The second covariant component of the spatial three-metric.
   PURE FUNCTION NumericalFlux_X2_HLLC_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift
@@ -1202,6 +1230,11 @@ CONTAINS
   !> @param Gm33 The third covariant component of the spatial three-metric.
   PURE FUNCTION NumericalFlux_X3_HLLC_Euler_Relativistic &
       ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Shift is the third contravariant component of the shift-vector
     !     Gm is the third covariant component of the spatial three-metric ---
@@ -1310,7 +1343,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in)           :: CF_D, CF_E, SSq, P
@@ -1348,7 +1381,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq
@@ -1584,7 +1617,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq, P
