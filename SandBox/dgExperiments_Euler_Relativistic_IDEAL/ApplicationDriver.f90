@@ -105,8 +105,8 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'RiemannProblem2d'
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
-  ProgramName = 'KelvinHelmholtz_Relativistic'
-!  ProgramName = 'KelvinHelmholtz_Relativistic_3D'
+!  ProgramName = 'KelvinHelmholtz_Relativistic'
+  ProgramName = 'KelvinHelmholtz_Relativistic_3D'
 !  ProgramName = 'KelvinHelmholtz'
 !  ProgramName = 'StandingAccretionShock'
 
@@ -246,7 +246,7 @@ PROGRAM ApplicationDriver
 
        bcX = [ 1, 1, 1 ]
 
-       t_end = 1.0d-1
+       t_end = 1.0d-2
 
     CASE( 'KelvinHelmholtz' )
 

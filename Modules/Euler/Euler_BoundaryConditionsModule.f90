@@ -23,6 +23,15 @@ MODULE Euler_BoundaryConditionsModule
   INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_Outer = 2
   INTEGER, PARAMETER, PUBLIC :: iEuler_ApplyBC_None  = 3
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET &
+  !$OMP ( iEuler_ApplyBC_Both, iEuler_ApplyBC_Inner, &
+  !$OMP   iEuler_ApplyBC_Outer, iEuler_ApplyBC_None )
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE &
+  !$ACC ( iEuler_ApplyBC_Both, iEuler_ApplyBC_Inner, &
+  !$ACC   iEuler_ApplyBC_Outer, iEuler_ApplyBC_None )
+#endif
 
 CONTAINS
 
