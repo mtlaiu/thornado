@@ -126,7 +126,7 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter      = .FALSE.
 
       iCycleD = 10
-      t_end   = 0.25d1 * ( 1.0d5 / SpeedOfLightMKS ) * Second
+      t_end   = 0.5d1 * ( 1.0d5 / SpeedOfLightMKS ) * Second
       dt_wrt  = 1.0d-1 * t_end
 
     CASE( 'RiemannProblem' )
