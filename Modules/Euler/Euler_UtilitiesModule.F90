@@ -52,6 +52,11 @@ CONTAINS
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, &
                              CF_E, CF_Ne
@@ -59,7 +64,6 @@ CONTAINS
                              PF_E, PF_Ne
     REAL(DP), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
-    !$ACC ROUTINE SEQ
 #if defined HYDRO_NONRELATIVISTIC
 
     CALL ComputePrimitive_Euler_NonRelativistic &
@@ -290,7 +294,11 @@ CONTAINS
 
   PURE FUNCTION Eigenvalues_Euler &
     ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: V, Cs, Gmii
 
@@ -323,7 +331,11 @@ CONTAINS
   REAL(DP) FUNCTION AlphaMiddle_Euler &
     ( DL, SL, EL, F_DL, F_SL, F_EL, DR, SR, ER, F_DR, F_SR, F_ER, &
       Gmii, aP, aM, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
+#endif
 
     ! --- Gm is the covariant ii-component of the spatial three-metric
     !     Shift is the ith contravariant component of the shift-vector ---
@@ -364,7 +376,11 @@ CONTAINS
 
   PURE FUNCTION Flux_X1_Euler &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
+#endif
 
     ! --- Shift is the first contravariant component of the shift-vector ---
 
@@ -399,6 +415,11 @@ CONTAINS
 
   PURE FUNCTION Flux_X2_Euler &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Shift is the second contravariant component of the shift-vector ---
 
@@ -433,6 +454,11 @@ CONTAINS
 
   PURE FUNCTION Flux_X3_Euler &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     ! --- Shift is the third contravariant component of the shift-vector ---
 
@@ -494,7 +520,11 @@ CONTAINS
 
   PURE FUNCTION Euler_NumericalFlux_X1 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm11
@@ -570,6 +600,11 @@ CONTAINS
 
   PURE FUNCTION Euler_NumericalFlux_X2 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm22
@@ -645,6 +680,11 @@ CONTAINS
 
   PURE FUNCTION Euler_NumericalFlux_X3 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm33
