@@ -56,6 +56,12 @@ CONTAINS
     ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+  !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in ) :: N, S_1, S_2, S_3, G, Ne
     REAL(DP), INTENT(out) :: D, V_1, V_2, V_3, E, De
     REAL(DP), INTENT(in ) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
@@ -101,6 +107,12 @@ CONTAINS
   SUBROUTINE ComputeConserved_Scalar &
     ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in ) :: D, V_1, V_2, V_3, E, De
     REAL(DP), INTENT(out) :: N, S_1, S_2, S_3, G, Ne
@@ -314,14 +326,20 @@ CONTAINS
   END SUBROUTINE ComputeTimeStep_Euler_NonRelativistic
 
 
-  PURE FUNCTION Eigenvalues_Euler_NonRelativistic &
+  FUNCTION Eigenvalues_Euler_NonRelativistic &
     ( Vi, Cs, Gmii )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
     ! --- Vi is the ith contravariant component of the three-velocity
     !     Gmii is the ith covariant component of the spatial three-metric ---
 
-    REAL(DP), INTENT(in)     :: Vi, Cs, Gmii
-    REAL(DP), DIMENSION(nCF) :: Eigenvalues_Euler_NonRelativistic
+    REAL(DP)             :: Eigenvalues_Euler_NonRelativistic(nCF)
+    REAL(DP), INTENT(in) :: Vi, Cs, Gmii
 
     Eigenvalues_Euler_NonRelativistic &
       = [ Vi - Cs / SQRT( Gmii ), Vi, Vi, Vi, Vi, Vi + Cs / SQRT( Gmii ) ]
@@ -330,10 +348,17 @@ CONTAINS
   END FUNCTION Eigenvalues_Euler_NonRelativistic
 
 
-  REAL(DP) FUNCTION AlphaMiddle_Euler_NonRelativistic &
+  FUNCTION AlphaMiddle_Euler_NonRelativistic &
     ( D_L, S_L, E_L, FD_L, FS_L, FE_L, D_R, S_R, E_R, FD_R, FS_R, FE_R, &
       Gmii, aP, aM )
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
+
+    REAL(DP)             :: AlphaMiddle_Euler_NonRelativistic
     REAL(DP), INTENT(in) :: D_L, S_L, E_L, FD_L, FS_L, FE_L, &
                             D_R, S_R, E_R, FD_R, FS_R, FE_R, &
                             Gmii, aP, aM
@@ -349,10 +374,16 @@ CONTAINS
   END FUNCTION AlphaMiddle_Euler_NonRelativistic
 
 
-  PURE FUNCTION Flux_X1_Euler_NonRelativistic &
+  FUNCTION Flux_X1_Euler_NonRelativistic &
     ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    REAL(DP)             :: Flux_X1_Euler_NonRelativistic(1:nCF)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
+
+    REAL(DP)             :: Flux_X1_Euler_NonRelativistic(nCF)
     REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, P
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
@@ -371,10 +402,16 @@ CONTAINS
   END FUNCTION Flux_X1_Euler_NonRelativistic
 
 
-  PURE FUNCTION Flux_X2_Euler_NonRelativistic &
+  FUNCTION Flux_X2_Euler_NonRelativistic &
     ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    REAL(DP)             :: Flux_X2_Euler_NonRelativistic(1:nCF)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
+
+    REAL(DP)             :: Flux_X2_Euler_NonRelativistic(nCF)
     REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, P
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
@@ -393,25 +430,45 @@ CONTAINS
   END FUNCTION Flux_X2_Euler_NonRelativistic
 
 
-  PURE FUNCTION Flux_X3_Euler_NonRelativistic &
+  FUNCTION Flux_X3_Euler_NonRelativistic &
     ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    REAL(DP)             :: Flux_X3_Euler_NonRelativistic(1:nCF)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
+
+    REAL(DP)             :: Flux_X3_Euler_NonRelativistic(nCF)
     REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, P
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
-    Flux_X3_Euler_NonRelativistic = 0.0_DP
+    REAL(DP) :: VSq
+
+    VSq = Gm_dd_11 * V_1**2 + Gm_dd_22 * V_2**2 + Gm_dd_33 * V_3**2
+
+    Flux_X3_Euler_NonRelativistic(iCF_D ) = D * V_3
+    Flux_X3_Euler_NonRelativistic(iCF_S1) = D * Gm_dd_11 * V_1 * V_3
+    Flux_X3_Euler_NonRelativistic(iCF_S2) = D * Gm_dd_22 * V_2 * V_3
+    Flux_X3_Euler_NonRelativistic(iCF_S3) = D * Gm_dd_33 * V_3 * V_3 + P
+    Flux_X3_Euler_NonRelativistic(iCF_E ) = ( E + Half * D * VSq + P ) * V_3
+    Flux_X3_Euler_NonRelativistic(iCF_Ne) = Ne * V_3
 
     RETURN
   END FUNCTION Flux_X3_Euler_NonRelativistic
 
 
-  PURE FUNCTION StressTensor_Diagonal_Euler_NonRelativistic &
+  FUNCTION StressTensor_Diagonal_Euler_NonRelativistic &
     ( S1, S2, S3, V1, V2, V3, P )
 
-    REAL(DP), INTENT(in) :: S1, S2, S3, V1, V2, V3, P
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
-    REAL(DP) :: StressTensor_Diagonal_Euler_NonRelativistic(3)
+    REAL(DP)             :: StressTensor_Diagonal_Euler_NonRelativistic(3)
+    REAL(DP), INTENT(in) :: S1, S2, S3, V1, V2, V3, P
 
     StressTensor_Diagonal_Euler_NonRelativistic(1) = S1 * V1 + P
     StressTensor_Diagonal_Euler_NonRelativistic(2) = S2 * V2 + P
@@ -421,12 +478,17 @@ CONTAINS
   END FUNCTION StressTensor_Diagonal_Euler_NonRelativistic
 
 
-  PURE FUNCTION NumericalFlux_HLL_Euler_NonRelativistic &
+  FUNCTION NumericalFlux_HLL_Euler_NonRelativistic &
     ( uL, uR, fL, fR, aP, aM )
 
-    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
-    REAL(DP) :: NumericalFlux_HLL_Euler_NonRelativistic(nCF)
+    REAL(DP)             :: NumericalFlux_HLL_Euler_NonRelativistic(nCF)
+    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM
 
     NumericalFlux_HLL_Euler_NonRelativistic &
       = ( aP * fL + aM * fR - aP * aM * ( uR - uL ) ) / ( aP + aM )
@@ -435,13 +497,19 @@ CONTAINS
   END FUNCTION NumericalFlux_HLL_Euler_NonRelativistic
 
 
-  PURE FUNCTION NumericalFlux_X1_HLLC_Euler_NonRelativistic &
+  FUNCTION NumericalFlux_X1_HLLC_Euler_NonRelativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11 )
 
-    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            aP, aM, aC, Gm11
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
-    REAL(DP) :: NumericalFlux_X1_HLLC_Euler_NonRelativistic(nCF)
+    REAL(DP)             :: &
+      NumericalFlux_X1_HLLC_Euler_NonRelativistic(nCF)
+    REAL(DP), INTENT(in) :: &
+      uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM, aC, Gm11
 
     REAL(DP) :: D, V1, V2, V3, P, E, Ne, TMP(nCF)
 
@@ -481,7 +549,7 @@ CONTAINS
 
       END IF
 
-      NumericalFlux_X1_HLLC_Euler_NonRelativistic(iCF_D) &
+      NumericalFlux_X1_HLLC_Euler_NonRelativistic(iCF_D ) &
         = D * V1
       NumericalFlux_X1_HLLC_Euler_NonRelativistic(iCF_S1) &
         = D * Gm11 * V1 * V1 + P
@@ -489,7 +557,7 @@ CONTAINS
         = D * V2 * V1
       NumericalFlux_X1_HLLC_Euler_NonRelativistic(iCF_S3) &
         = D * V3 * V1
-      NumericalFlux_X1_HLLC_Euler_NonRelativistic(iCF_E) &
+      NumericalFlux_X1_HLLC_Euler_NonRelativistic(iCF_E ) &
         = ( E + P ) * V1
       NumericalFlux_X1_HLLC_Euler_NonRelativistic(iCF_Ne) &
         = Ne * V1
@@ -500,13 +568,19 @@ CONTAINS
   END FUNCTION NumericalFlux_X1_HLLC_Euler_NonRelativistic
 
 
-  PURE FUNCTION NumericalFlux_X2_HLLC_Euler_NonRelativistic &
+  FUNCTION NumericalFlux_X2_HLLC_Euler_NonRelativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm22 )
 
-    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            aP, aM, aC, Gm22
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
-    REAL(DP) :: NumericalFlux_X2_HLLC_Euler_NonRelativistic(nCF)
+    REAL(DP)             :: &
+      NumericalFlux_X2_HLLC_Euler_NonRelativistic(nCF)
+    REAL(DP), INTENT(in) :: &
+      uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM, aC, Gm22
 
     REAL(DP) :: D, V1, V2, V3, P, E, Ne, TMP(nCF)
 
@@ -546,7 +620,7 @@ CONTAINS
 
       END IF
 
-      NumericalFlux_X2_HLLC_Euler_NonRelativistic(iCF_D) &
+      NumericalFlux_X2_HLLC_Euler_NonRelativistic(iCF_D ) &
         = D * V2
       NumericalFlux_X2_HLLC_Euler_NonRelativistic(iCF_S1) &
         = D * V1 * V2
@@ -554,7 +628,7 @@ CONTAINS
         = D * Gm22 * V2 * V2 + P
       NumericalFlux_X2_HLLC_Euler_NonRelativistic(iCF_S3) &
         = D * V3 * V2
-      NumericalFlux_X2_HLLC_Euler_NonRelativistic(iCF_E) &
+      NumericalFlux_X2_HLLC_Euler_NonRelativistic(iCF_E ) &
         = ( E + P ) * V2
       NumericalFlux_X2_HLLC_Euler_NonRelativistic(iCF_Ne) &
         = Ne * V2
@@ -565,13 +639,19 @@ CONTAINS
   END FUNCTION NumericalFlux_X2_HLLC_Euler_NonRelativistic
 
 
-  PURE FUNCTION NumericalFlux_X3_HLLC_Euler_NonRelativistic &
+  FUNCTION NumericalFlux_X3_HLLC_Euler_NonRelativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm33 )
 
-    REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
-                            aP, aM, aC, Gm33
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
-    REAL(DP) :: NumericalFlux_X3_HLLC_Euler_NonRelativistic(nCF)
+    REAL(DP)             :: &
+      NumericalFlux_X3_HLLC_Euler_NonRelativistic(nCF)
+    REAL(DP), INTENT(in) :: &
+      uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM, aC, Gm33
 
     REAL(DP) :: D, V1, V2, V3, P, E, Ne, TMP(nCF)
 
@@ -611,7 +691,7 @@ CONTAINS
 
       END IF
 
-      NumericalFlux_X3_HLLC_Euler_NonRelativistic(iCF_D) &
+      NumericalFlux_X3_HLLC_Euler_NonRelativistic(iCF_D ) &
         = D * V3
       NumericalFlux_X3_HLLC_Euler_NonRelativistic(iCF_S1) &
         = D * V1 * V3
@@ -619,7 +699,7 @@ CONTAINS
         = D * V2 * V3
       NumericalFlux_X3_HLLC_Euler_NonRelativistic(iCF_S3) &
         = D * Gm33 * V3 * V3 + P
-      NumericalFlux_X3_HLLC_Euler_NonRelativistic(iCF_E) &
+      NumericalFlux_X3_HLLC_Euler_NonRelativistic(iCF_E ) &
         = ( E + P ) * V3
       NumericalFlux_X3_HLLC_Euler_NonRelativistic(iCF_Ne) &
         = Ne * V3
@@ -628,5 +708,6 @@ CONTAINS
 
     RETURN
   END FUNCTION NumericalFlux_X3_HLLC_Euler_NonRelativistic
+
 
 END MODULE Euler_UtilitiesModule_NonRelativistic
