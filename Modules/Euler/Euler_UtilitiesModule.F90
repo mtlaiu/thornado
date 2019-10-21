@@ -94,7 +94,13 @@ CONTAINS
 
 #endif
 
-    iErr_Option = iErr
+    IF( PRESENT( iErr_Option ) ) &
+      iErr_Option = iErr
+
+    IF( iErr .EQ. -1 )THEN
+      PRINT*, 'iErr = -1. Stopping...'
+      STOP ''
+    END IF
 
   END SUBROUTINE ComputePrimitive_Scalar
 
