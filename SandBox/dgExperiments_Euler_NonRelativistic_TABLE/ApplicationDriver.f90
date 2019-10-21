@@ -125,8 +125,8 @@ PROGRAM ApplicationDriver
       LimiterThresholdParameter = 1.0d-2
       UsePositivityLimiter      = .FALSE.
 
-      iCycleD = 10
-      t_end   = 0.5d1 * ( 1.0d5 / SpeedOfLightMKS ) * Second
+      iCycleD = 1
+      t_end   = 0.5d0 * ( 1.0d5 / SpeedOfLightMKS ) * Second
       dt_wrt  = 1.0d-1 * t_end
 
     CASE( 'RiemannProblem' )
@@ -355,6 +355,12 @@ PROGRAM ApplicationDriver
   t     = 0.0_DP * Millisecond
   t_wrt = dt_wrt
   wrt   = .FALSE.
+
+  WRITE(*,*)
+  WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
+    '', 'Evolving from t = ', t / Millisecond, &
+    ' to t = ', t_end / Millisecond
+  WRITE(*,*)
 
   CALL InitializeTally_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, &
