@@ -68,7 +68,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: SphericalRiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
-  LOGICAL       :: OPTIMIZE = .FALSE.
+  LOGICAL       :: OPTIMIZE = .TRUE.
   LOGICAL       :: SuppressTally = .TRUE.
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
@@ -311,16 +311,15 @@ PROGRAM ApplicationDriver
   BetaTVD = 1.75d0
   BetaTVB = 0.0d0
 
-  UseSlopeLimiter           = .TRUE.
+  UseSlopeLimiter           = .FALSE.
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
 
   UseTroubledCellIndicator  = .TRUE.
   LimiterThresholdParameter = 0.015_DP
-
   UseConservativeCorrection = .TRUE.
 
-  UsePositivityLimiter = .TRUE.
+  UsePositivityLimiter = .FALSE.
   Min_1 = 1.0d-13
   Min_2 = 1.0d-13
 
@@ -338,7 +337,7 @@ PROGRAM ApplicationDriver
   ! --- Cockburn & Shu, (2001), JSC, 16, 173 ---
   CFL = 0.5_DP
 
-  CALL WriteProgramHeader
+!!$  CALL WriteProgramHeader
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -495,6 +494,7 @@ PROGRAM ApplicationDriver
       END IF
 
     END IF
+
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     CALL UpdateFluid_SSPRK &
