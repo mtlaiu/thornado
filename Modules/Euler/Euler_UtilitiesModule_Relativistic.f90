@@ -63,6 +63,7 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PARAMETER :: TolP = 1.0d-8, TolFunP = 1.0d-6, MachineEPS = 1.0d-16
   LOGICAL             :: DEBUG = .FALSE.
 
+  !$ACC DECLARE COPYIN( TolP, TolFunP, MachineEPS, DEBUG )
 
 CONTAINS
 
@@ -75,6 +76,11 @@ CONTAINS
               ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
                 PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
                 GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
     REAL(DP), INTENT(out) :: PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
@@ -92,18 +98,18 @@ CONTAINS
                               + CF_S3**2 / GF_Gm_dd_33 )
 
     IF( q .LT. Zero )THEN
-      WRITE(*,*)
-      WRITE(*,'(A)')            'ComputePrimitive_Euler_Relativistic (Scalar)'
-      WRITE(*,'(A)')            '--------------------------------------------'
-      WRITE(*,'(A9,ES18.10E3)') 'q:    ', q
-      WRITE(*,'(A9,ES18.10E3)') 'Gm11: ', GF_Gm_dd_11
-      WRITE(*,'(A9,ES18.10E3)') 'Gm22: ', GF_Gm_dd_22
-      WRITE(*,'(A9,ES18.10E3)') 'Gm33: ', GF_Gm_dd_33
-      WRITE(*,'(A9,ES18.10E3)') 'D:    ', CF_D
-      WRITE(*,'(A9,ES18.10E3)') 'tau:  ', CF_E
-      WRITE(*,'(A9,ES18.10E3)') 'S1:   ', CF_S1
-      WRITE(*,'(A9,ES18.10E3)') 'S2:   ', CF_S2
-      WRITE(*,'(A9,ES18.10E3)') 'S3:   ', CF_S3
+!!$      WRITE(*,*)
+!!$      WRITE(*,'(A)')            'ComputePrimitive_Euler_Relativistic (Scalar)'
+!!$      WRITE(*,'(A)')            '--------------------------------------------'
+!!$      WRITE(*,'(A9,ES18.10E3)') 'q:    ', q
+!!$      WRITE(*,'(A9,ES18.10E3)') 'Gm11: ', GF_Gm_dd_11
+!!$      WRITE(*,'(A9,ES18.10E3)') 'Gm22: ', GF_Gm_dd_22
+!!$      WRITE(*,'(A9,ES18.10E3)') 'Gm33: ', GF_Gm_dd_33
+!!$      WRITE(*,'(A9,ES18.10E3)') 'D:    ', CF_D
+!!$      WRITE(*,'(A9,ES18.10E3)') 'tau:  ', CF_E
+!!$      WRITE(*,'(A9,ES18.10E3)') 'S1:   ', CF_S1
+!!$      WRITE(*,'(A9,ES18.10E3)') 'S2:   ', CF_S2
+!!$      WRITE(*,'(A9,ES18.10E3)') 'S3:   ', CF_S3
       STOP 'q < 0'
     END IF
 
@@ -118,7 +124,7 @@ CONTAINS
 
     Pold = Pbisec
     IF( Pbisec .LT. SqrtTiny )THEN
-      WRITE(*,'(A)') '    EE: Pbisec < SqrTiny. Stopping...'
+      PRINT*, '    EE: Pbisec < SqrTiny. Stopping...'
       STOP
     END IF
 
@@ -143,7 +149,7 @@ CONTAINS
       IF( ABS( FunP / JacP ) .LT. MachineEPS ) THEN
         Pnew = Pold
         CONVERGED = .TRUE.
-        EXIT
+        CYCLE
       END IF
 
       Pnew = MAX( Pold - FunP / JacP, SqrtTiny )
@@ -153,55 +159,55 @@ CONTAINS
 
         CALL ComputeFunJacP( CF_D, CF_E, SSq, Pnew, FunP, JacP )
 
-        IF( .NOT. ( ABS( FunP ) .LT. TolFunP * ABS( Pnew ) ) ) THEN
-          WRITE(*,*)
-          WRITE(*,'(A)') 'WARNING:'
-          WRITE(*,'(A)') '--------'
-          WRITE(*,'(A)') 'ABS( FunP / Pnew ) > TolFunP'
-          WRITE(*,'(A,ES24.16E3)') 'TolFunP              = ', TolFunP
-          WRITE(*,'(A,ES24.16E3)') 'Pold                 = ', Pold
-          WRITE(*,'(A,ES24.16E3)') 'Pnew                 = ', Pnew
-          WRITE(*,'(A,ES24.16E3)') &
-            '|(Pnew - Pold)/Pold| = ', ABS( ( Pnew - Pold ) / Pold )
-          WRITE(*,'(A,ES24.16E3)') &
-            '|FunP(Pnew) / Pnew|  = ', ABS( FunP / Pnew )
-        END IF
+!!$        IF( .NOT. ( ABS( FunP ) .LT. TolFunP * ABS( Pnew ) ) ) THEN
+!!$          WRITE(*,*)
+!!$          WRITE(*,'(A)') 'WARNING:'
+!!$          WRITE(*,'(A)') '--------'
+!!$          WRITE(*,'(A)') 'ABS( FunP / Pnew ) > TolFunP'
+!!$          WRITE(*,'(A,ES24.16E3)') 'TolFunP              = ', TolFunP
+!!$          WRITE(*,'(A,ES24.16E3)') 'Pold                 = ', Pold
+!!$          WRITE(*,'(A,ES24.16E3)') 'Pnew                 = ', Pnew
+!!$          WRITE(*,'(A,ES24.16E3)') &
+!!$            '|(Pnew - Pold)/Pold| = ', ABS( ( Pnew - Pold ) / Pold )
+!!$          WRITE(*,'(A,ES24.16E3)') &
+!!$            '|FunP(Pnew) / Pnew|  = ', ABS( FunP / Pnew )
+!!$        END IF
 
         CONVERGED = .TRUE.
-        EXIT
+        CYCLE
 
       END IF
 
       ! --- STOP after MAX_IT iterations ---
-      IF( ITERATION .GE. MAX_IT - 4 .OR. DEBUG )THEN
-        WRITE(*,*)
-        WRITE(*,'(A)')           '    CP: Max iterations IF statement'
-        WRITE(*,'(A)')           '    -------------------------------'
-        WRITE(*,'(A,I1)')        '    CP: Node: ', i
-        WRITE(*,'(A,ES7.1E2)')   '    CP: TolP    = ', TolP
-        WRITE(*,'(A,ES7.1E2)')   '    CP: TolFunP = ', TolFunP
-        WRITE(*,*)
-        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_D)  = ', CF_D
-        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S1) = ', CF_S1
-        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S2) = ', CF_S2
-        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S3) = ', CF_S3
-        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_E)  = ', CF_E
-        WRITE(*,*)
-        WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_11) = ', GF_Gm_dd_11
-        WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_22) = ', GF_Gm_dd_22
-        WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_33) = ', GF_Gm_dd_33
-        WRITE(*,*)
-        WRITE(*,'(A,ES24.16E3)') '    CP: |v|   = ', &
-          ABS( CF_S1 / ( CF_E + CF_D + Pnew ) )
-        WRITE(*,'(A,ES24.16E3)') '    CP: W     = ', &
-          1.0d0 / SQRT( 1.0d0 - SSq / ( CF_E + CF_D + Pnew )**2 )
-        WRITE(*,'(A,ES24.16E3)') '    CP: P/rho = ', &
-          Pnew / ( CF_D / ( 1.0d0 / SQRT( 1.0d0 &
-            - SSq / ( CF_E + CF_D + Pnew )**2 ) ) )
-        WRITE(*,*)
-        WRITE(*,'(A,ES24.16E3)') '    CP: Pold   = ', Pold
-        WRITE(*,*)
-      END IF
+!!$      IF( ITERATION .GE. MAX_IT - 4 .OR. DEBUG )THEN
+!!$        WRITE(*,*)
+!!$        WRITE(*,'(A)')           '    CP: Max iterations IF statement'
+!!$        WRITE(*,'(A)')           '    -------------------------------'
+!!$        WRITE(*,'(A,I1)')        '    CP: Node: ', i
+!!$        WRITE(*,'(A,ES7.1E2)')   '    CP: TolP    = ', TolP
+!!$        WRITE(*,'(A,ES7.1E2)')   '    CP: TolFunP = ', TolFunP
+!!$        WRITE(*,*)
+!!$        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_D)  = ', CF_D
+!!$        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S1) = ', CF_S1
+!!$        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S2) = ', CF_S2
+!!$        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_S3) = ', CF_S3
+!!$        WRITE(*,'(A,ES24.16E3)') '    U(i,iCF_E)  = ', CF_E
+!!$        WRITE(*,*)
+!!$        WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_11) = ', GF_Gm_dd_11
+!!$        WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_22) = ', GF_Gm_dd_22
+!!$        WRITE(*,'(A,ES24.16E3)') '    G(i,iGF_Gm_dd_33) = ', GF_Gm_dd_33
+!!$        WRITE(*,*)
+!!$        WRITE(*,'(A,ES24.16E3)') '    CP: |v|   = ', &
+!!$          ABS( CF_S1 / ( CF_E + CF_D + Pnew ) )
+!!$        WRITE(*,'(A,ES24.16E3)') '    CP: W     = ', &
+!!$          1.0d0 / SQRT( 1.0d0 - SSq / ( CF_E + CF_D + Pnew )**2 )
+!!$        WRITE(*,'(A,ES24.16E3)') '    CP: P/rho = ', &
+!!$          Pnew / ( CF_D / ( 1.0d0 / SQRT( 1.0d0 &
+!!$            - SSq / ( CF_E + CF_D + Pnew )**2 ) ) )
+!!$        WRITE(*,*)
+!!$        WRITE(*,'(A,ES24.16E3)') '    CP: Pold   = ', Pold
+!!$        WRITE(*,*)
+!!$      END IF
 
       Pold = Pnew
 
@@ -693,6 +699,11 @@ CONTAINS
   !> @param Shift The ith contravariant component of the shift-vector.
   PURE FUNCTION Eigenvalues_Euler_Relativistic &
     ( Vi, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
     REAL(DP), INTENT(in) :: Vi, Cs, Gmii, V1, V2, V3, &
                             Gm11, Gm22, Gm33, Lapse, Shift
@@ -734,6 +745,11 @@ CONTAINS
   REAL(DP) FUNCTION AlphaMiddle_Euler_Relativistic &
     ( DL, SL, tauL, F_DL, F_SL, F_tauL, DR, SR, tauR, F_DR, F_SR, F_tauR, &
       Gmii, aP, aM, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
     REAL(DP), INTENT(in) :: DL, SL, tauL, F_DL, F_SL, F_tauL, &
                             DR, SR, tauR, F_DR, F_SR, F_tauR, &
@@ -787,6 +803,11 @@ CONTAINS
   !> @param Shift The first contravariant component of the shift-vector.
   PURE FUNCTION Flux_X1_Euler_Relativistic &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
@@ -918,6 +939,11 @@ CONTAINS
   !> interface, in a given dimension.
   PURE FUNCTION NumericalFlux_LLF_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
     ! --- Local Lax-Friedrichs Flux ---
 
@@ -940,6 +966,11 @@ CONTAINS
   !> interface, in a given dimension.
   PURE FUNCTION NumericalFlux_HLL_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), aP, aM
 
@@ -958,6 +989,11 @@ CONTAINS
   !> @param Gm11 The first covariant component of the spatial three-metric.
   PURE FUNCTION NumericalFlux_X1_HLLC_Euler_Relativistic &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift
@@ -1271,13 +1307,18 @@ CONTAINS
 
 
   SUBROUTINE ComputeFunJacP( CF_D, CF_E, SSq, P, FunP, JacP, Pnorm_Option )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
     REAL(DP), INTENT(in)           :: CF_D, CF_E, SSq, P
     REAL(DP), INTENT(in), OPTIONAL :: Pnorm_Option
     REAL(DP), INTENT(out)          :: FunP, JacP
 
     REAL(DP) :: HSq, RHO, EPS, dRHO, dEPS, Pnorm
-    REAL(DP) :: Pbar(1)
+    REAL(DP) :: Pbar
 
     Pnorm = One
     IF( PRESENT( Pnorm_Option ) ) Pnorm = Pnorm_Option
@@ -1290,20 +1331,25 @@ CONTAINS
             - P * SQRT( HSq ) / SQRT( HSq - SSq ) - CF_D ) / CF_D
 
     CALL ComputePressureFromSpecificInternalEnergy &
-         ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
+         ( RHO, EPS, Zero, Pbar )
 
-    FunP = ( P - Pbar(1) ) / Pnorm
+    FunP = ( P - Pbar ) / Pnorm
 
     dRHO = CF_D * SSq / ( SQRT( HSq - SSq ) * HSq )
 
     dEPS = P * SSq / ( ( HSq - SSq ) * SQRT( HSq ) * RHO )
 
-    JacP = ( 1.0_DP - Pbar(1) * ( dRHO / RHO + dEPS / EPS ) ) / Pnorm
+    JacP = ( One - Pbar * ( dRHO / RHO + dEPS / EPS ) ) / Pnorm
 
   END SUBROUTINE ComputeFunJacP
 
 
   SUBROUTINE ComputePressureWithBisectionMethod( CF_D, CF_E, SSq, P )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
     REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq
     REAL(DP), INTENT(out) :: P
@@ -1325,18 +1371,21 @@ CONTAINS
     ! --- Check that sign of FunP changes across bounds ---
     IF( .NOT. FunPA * FunPB .LT. 0 )THEN
 
-      WRITE(*,'(6x,A)') &
-        'ComputePressureWithBisectionMethod:'
-      WRITE(*,'(8x,A)') &
-        'Error: No Root in Interval'
-      WRITE(*,'(8x,A,ES24.16E3)') 'CF_D: ', CF_D
-      WRITE(*,'(8x,A,ES24.16E3)') 'CF_E: ', CF_E
-      WRITE(*,'(8x,A,ES24.16E3)') 'SSq:  ', SSq
-      WRITE(*,'(8x,A,2ES15.6E3)') &
-        'PA, PB = ', PA, PB
-      WRITE(*,'(8x,A,2ES15.6E3)') &
-        'FunPA, FunPB = ', FunPA, FunPB
-      STOP
+!!$      WRITE(*,'(6x,A)') &
+!!$        'ComputePressureWithBisectionMethod:'
+!!$      WRITE(*,'(8x,A)') &
+!!$        'Error: No Root in Interval'
+!!$      WRITE(*,'(8x,A,ES24.16E3)') 'CF_D: ', CF_D
+!!$      WRITE(*,'(8x,A,ES24.16E3)') 'CF_E: ', CF_E
+!!$      WRITE(*,'(8x,A,ES24.16E3)') 'SSq:  ', SSq
+!!$      WRITE(*,'(8x,A,2ES15.6E3)') &
+!!$        'PA, PB = ', PA, PB
+!!$      WRITE(*,'(8x,A,2ES15.6E3)') &
+!!$        'FunPA, FunPB = ', FunPA, FunPB
+      PRINT*, 'CF_D = ', CF_D
+      PRINT*, 'CF_E = ', CF_E
+      PRINT*, 'SSq  = ', SSq
+      STOP 'ComputePressureWithBisectionMethod'
 
     END IF
 
@@ -1532,12 +1581,17 @@ CONTAINS
 
 
   SUBROUTINE ComputeFunP( CF_D, CF_E, SSq, P, FunP )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ 
+#endif
 
     REAL(DP), INTENT(in)  :: CF_D, CF_E, SSq, P
     REAL(DP), INTENT(out) :: FunP
 
     REAL(DP) :: HSq, RHO, EPS
-    REAL(DP) :: Pbar(1)
+    REAL(DP) :: Pbar
 
     HSq = ( CF_E + P + CF_D )**2
 
@@ -1547,9 +1601,9 @@ CONTAINS
             - P * SQRT( HSq ) / SQRT( HSq - SSq ) - CF_D ) / CF_D
 
     CALL ComputePressureFromSpecificInternalEnergy &
-         ( [ RHO ], [ EPS ], [ 0.0_DP ], Pbar )
+         ( RHO, EPS, Zero, Pbar )
 
-    FunP = P - Pbar(1)
+    FunP = P - Pbar
 
   END SUBROUTINE ComputeFunP
 

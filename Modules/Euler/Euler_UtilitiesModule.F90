@@ -59,6 +59,7 @@ CONTAINS
                              PF_E, PF_Ne
     REAL(DP), INTENT(in)  :: GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
+    !$ACC ROUTINE SEQ
 #if defined HYDRO_NONRELATIVISTIC
 
     CALL ComputePrimitive_Euler_NonRelativistic &
@@ -289,6 +290,7 @@ CONTAINS
 
   PURE FUNCTION Eigenvalues_Euler &
     ( V, Cs, Gmii, V1, V2, V3, Gm11, Gm22, Gm33, Lapse, Shift )
+    !$ACC ROUTINE SEQ
 
     REAL(DP), INTENT(in) :: V, Cs, Gmii
 
@@ -321,6 +323,7 @@ CONTAINS
   REAL(DP) FUNCTION AlphaMiddle_Euler &
     ( DL, SL, EL, F_DL, F_SL, F_EL, DR, SR, ER, F_DR, F_SR, F_ER, &
       Gmii, aP, aM, Lapse, Shift )
+    !$ACC ROUTINE SEQ
 
     ! --- Gm is the covariant ii-component of the spatial three-metric
     !     Shift is the ith contravariant component of the shift-vector ---
@@ -361,6 +364,7 @@ CONTAINS
 
   PURE FUNCTION Flux_X1_Euler &
     ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
+    !$ACC ROUTINE SEQ
 
     ! --- Shift is the first contravariant component of the shift-vector ---
 
@@ -490,6 +494,7 @@ CONTAINS
 
   PURE FUNCTION Euler_NumericalFlux_X1 &
     ( uL, uR, fL, fR, aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift )
+    !$ACC ROUTINE SEQ
 
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm11
