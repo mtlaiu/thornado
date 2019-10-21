@@ -29,6 +29,7 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_Euler_NumericalFlux
   REAL(DP), PUBLIC :: Timer_Euler_VolumeTerm
   REAL(DP), PUBLIC :: Timer_Euler_ComputePrimitive
+  REAL(DP), PUBLIC :: Timer_Euler_ComputeFromPrimitive
 
   ! --- GPU ---
   REAL(DP), PUBLIC :: Timer_Euler_CopyIn
@@ -73,6 +74,7 @@ CONTAINS
     Timer_Euler_VolumeTerm       = Zero
     Timer_Euler_Increment        = Zero
     Timer_Euler_ComputePrimitive = Zero
+    Timer_Euler_ComputeFromPrimitive = Zero
 
     Timer_Euler_CopyIn           = Zero
     Timer_Euler_Permute          = Zero
@@ -262,6 +264,14 @@ CONTAINS
         100.0_DP &
           * Timer_Euler_ComputePrimitive / Timer_Euler_Program, ' % === ', &
         100.0_DP * Timer_Euler_ComputePrimitive &
+                    / ( Timer_Euler_SurfaceTerm + Timer_Euler_VolumeTerm ), ' %'
+
+      WRITE(*,TRIM(TimeAux)) &
+        'Compute From Primitive: ', &
+        Timer_Euler_ComputeFromPrimitive, ' s = ', &
+        100.0_DP &
+          * Timer_Euler_ComputeFromPrimitive / Timer_Euler_Program, ' % === ', &
+        100.0_DP * Timer_Euler_ComputeFromPrimitive &
                     / ( Timer_Euler_SurfaceTerm + Timer_Euler_VolumeTerm ), ' %'
 
       WRITE(*,*)
