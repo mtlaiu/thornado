@@ -56,6 +56,16 @@ PROGRAM ApplicationDriver
     InitializeTally_Euler_NonRelativistic_TABLE, &
     FinalizeTally_Euler_NonRelativistic_TABLE, &
     ComputeTally_Euler_NonRelativistic_TABLE
+  USE TimersModule_Euler, ONLY: &
+    TimeIt_Euler, &
+    InitializeTimers_Euler, &
+    FinalizeTimers_Euler, &
+    TimersStart_Euler, &
+    TimersStop_Euler, &
+    Timer_Euler_InputOutput, &
+    Timer_Euler_Initialize, &
+    Timer_Euler_UpdateFluid, &
+    Timer_Euler_Finalize
 
   IMPLICIT NONE
 
@@ -78,6 +88,12 @@ PROGRAM ApplicationDriver
   REAL(DP)       :: BetaTVD, BetaTVB
   REAL(DP)       :: LimiterThresholdParameter
 
+  TimeIt_Euler = .TRUE.
+
+  CALL InitializeTimers_Euler
+
+  CALL TimersStart_Euler( Timer_Euler_Initialize )
+
   ProgramName = 'Advection'
 
   EosTableName = 'wl-EOS-SFHo-15-25-50-noBCK.h5'
@@ -90,7 +106,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 08, 01, 01 ]
+      nX = [ 08, 08, 01 ]
       xL = [ 0.0d0, 0.0d0, 0.0d0 ] * Kilometer
       xR = [ 1.0d2, 1.0d2, 1.0d2 ] * Kilometer
 
@@ -321,10 +337,16 @@ PROGRAM ApplicationDriver
            uPF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
            uAF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
 
+  CALL InitializeFluid_SSPRK( nStages )
+
+  CALL TimersStop_Euler( Timer_Euler_Initialize )
+
+  CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
   CALL WriteFieldsHDF &
          ( 0.0_DP, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
 
-  CALL InitializeFluid_SSPRK( nStages )
+  CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   ! --- Evolve ---
 
@@ -337,7 +359,8 @@ PROGRAM ApplicationDriver
   CALL InitializeTally_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:) )
+           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
+           SuppressTally_Option = .TRUE. )
 
   iCycle = 0
   DO WHILE ( t < t_end )
@@ -366,13 +389,21 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
+      CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
       WRITE(*,'(A8,A8,I8.8,A2,A4,ES13.6E3,A4,A5,ES13.6E3,A3)') &
           '', 'Cycle = ', iCycle, '', 't = ',  t / Millisecond, ' ms ', 'dt = ', dt / Millisecond, ' ms'
 
+      CALL TimersStop_Euler( Timer_Euler_InputOutput )
+
     END IF
+
+    CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, Euler_ComputeIncrement_DG_Explicit )
+
+    CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
     t = t + dt
 
@@ -385,8 +416,12 @@ PROGRAM ApplicationDriver
                uPF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
                uAF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
 
+      CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
+      CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
       CALL ComputeTally_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, &
@@ -407,14 +442,20 @@ PROGRAM ApplicationDriver
            uPF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
            uAF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:) )
 
+  CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
+  CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   CALL ComputeTally_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, &
            uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+
+  CALL TimersStart_Euler( Timer_Euler_Finalize )
 
   CALL FinalizeTally_Euler_NonRelativistic_TABLE
 
@@ -438,5 +479,9 @@ PROGRAM ApplicationDriver
   CALL FinalizeReferenceElementX
 
   CALL FinalizeProgram
+
+  CALL TimersStop_Euler( Timer_Euler_Finalize )
+
+  CALL FinalizeTimers_Euler
 
 END PROGRAM ApplicationDriver
