@@ -221,6 +221,14 @@ CONTAINS
       CALL InitializeProgramHeaderZ
     END IF
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: nX, nNodesX, swX, bcX, xL, xR, zoomX )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( nX, nNodesX, swX, bcX, xL, xR, zoomX )
+#endif
+
   END SUBROUTINE InitializeProgramHeaderX
 
 
