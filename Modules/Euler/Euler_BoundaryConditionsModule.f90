@@ -177,24 +177,34 @@ CONTAINS
 
     CASE ( 2 ) ! Homogeneous
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( U, iX_B0, iX_E0, swX, iApplyBC )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
       DO iCF = 1, nCF
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = 1, swX(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = 1, swX(1)
+      DO iNode = 1, nDOFX
 
-          ! --- Inner Boundary ---
-          IF( ApplyInnerBC( iApplyBC ) ) &
-            U(:,iX_B0(1)-iX1,iX2,iX3,iCF) &
-              = U(:,iX_B0(1),iX2,iX3,iCF)
+        ! --- Inner Boundary ---
+        IF( ApplyInnerBC( iApplyBC ) ) &
+          U(iNode,iX_B0(1)-iX1,iX2,iX3,iCF) &
+            = U(iNode,iX_B0(1),iX2,iX3,iCF)
 
-          ! --- Outer Boundary ---
-          IF( ApplyOuterBC( iApplyBC ) ) &
-            U(:,iX_E0(1)+iX1,iX2,iX3,iCF) &
-              = U(:,iX_E0(1),iX2,iX3,iCF)
+        ! --- Outer Boundary ---
+        IF( ApplyOuterBC( iApplyBC ) ) &
+          U(iNode,iX_E0(1)+iX1,iX2,iX3,iCF) &
+            = U(iNode,iX_E0(1),iX2,iX3,iCF)
 
-        END DO
-        END DO
-        END DO
+      END DO
+      END DO
+      END DO
+      END DO
       END DO
 
     CASE ( 3 ) ! Reflecting
@@ -471,24 +481,34 @@ CONTAINS
 
     CASE ( 2 ) ! Homogeneous
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( U, iX_B0, iX_E0, swX, iApplyBC )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
       DO iCF = 1, nCF
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = 1, swX(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = 1, swX(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNode = 1, nDOFX
 
-          ! --- Inner Boundary ---
-          IF( ApplyInnerBC( iApplyBC ) ) &
-            U(:,iX1,iX_B0(2)-iX2,iX3,iCF) &
-              = U(:,iX1,iX_B0(2),iX3,iCF)
+        ! --- Inner Boundary ---
+        IF( ApplyInnerBC( iApplyBC ) ) &
+          U(iNode,iX1,iX_B0(2)-iX2,iX3,iCF) &
+            = U(iNode,iX1,iX_B0(2),iX3,iCF)
 
-           ! --- Outer Boundary ---
-           IF( ApplyOuterBC( iApplyBC ) ) &
-            U(:,iX1,iX_E0(2)+iX2,iX3,iCF) &
-              = U(:,iX1,iX_E0(2),iX3,iCF)
+         ! --- Outer Boundary ---
+         IF( ApplyOuterBC( iApplyBC ) ) &
+          U(iNode,iX1,iX_E0(2)+iX2,iX3,iCF) &
+            = U(iNode,iX1,iX_E0(2),iX3,iCF)
 
-        END DO
-        END DO
-        END DO
+      END DO
+      END DO
+      END DO
+      END DO
       END DO
 
     CASE ( 3 ) ! Reflecting
@@ -644,24 +664,34 @@ CONTAINS
 
     CASE ( 2 ) ! Homogeneous
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PRESENT( U, iX_B0, iX_E0, swX, iApplyBC )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO SIMD COLLAPSE(5)
+#endif
       DO iCF = 1, nCF
-        DO iX3 = 1, swX(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = 1, swX(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNode = 1, nDOFX
 
-          ! --- Inner Boundary ---
-          IF( ApplyInnerBC( iApplyBC ) ) &
-            U(:,iX1,iX2,iX_B0(3)-iX3,iCF) &
-              = U(:,iX1,iX2,iX_B0(3),iCF)
+        ! --- Inner Boundary ---
+        IF( ApplyInnerBC( iApplyBC ) ) &
+          U(iNode,iX1,iX2,iX_B0(3)-iX3,iCF) &
+            = U(iNode,iX1,iX2,iX_B0(3),iCF)
 
-          ! --- Outer Boundary ---
-          IF( ApplyOuterBC( iApplyBC ) ) &
-            U(:,iX1,iX2,iX_E0(3)+iX3,iCF) &
-              = U(:,iX1,iX2,iX_E0(3),iCF)
+        ! --- Outer Boundary ---
+        IF( ApplyOuterBC( iApplyBC ) ) &
+          U(iNode,iX1,iX2,iX_E0(3)+iX3,iCF) &
+            = U(iNode,iX1,iX2,iX_E0(3),iCF)
 
-        END DO
-        END DO
-        END DO
+      END DO
+      END DO
+      END DO
+      END DO
       END DO
 
     CASE DEFAULT
