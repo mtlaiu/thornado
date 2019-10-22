@@ -106,11 +106,26 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'SphericalRiemannProblem'
 !  ProgramName = 'SphericalSedov'
 !  ProgramName = 'KelvinHelmholtz_Relativistic'
-  ProgramName = 'KelvinHelmholtz_Relativistic_3D'
+!  ProgramName = 'KelvinHelmholtz_Relativistic_3D'
+  ProgramName = 'Advection_Relativistic'
 !  ProgramName = 'KelvinHelmholtz'
 !  ProgramName = 'StandingAccretionShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
+
+    CASE( 'Advection_Relativistic' )
+
+       CoordinateSystem = 'CARTESIAN'
+
+       Gamma = 4.0d0 / 3.0d0
+
+       nX = [ 16, 1, 1 ]
+       xL = [ 0.0d0, 0.0d0, 0.0d0 ]
+       xR = [ 1.0d0, 1.0d0, 1.0d0 ]
+
+       bcX = [ 1, 0, 0 ]
+
+       t_end = 1.0d1
 
     CASE( 'RiemannProblem' )
 
