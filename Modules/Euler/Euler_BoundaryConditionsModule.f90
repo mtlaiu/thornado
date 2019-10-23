@@ -628,6 +628,7 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iNode, iCF, iX1, iX2, iX3
+    INTEGER :: iNodeX, jNodeX, jNodeX3, iNodeX1, iNodeX2, iNodeX3
 
     SELECT CASE ( bcX(3) )
 
