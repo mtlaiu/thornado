@@ -2,10 +2,6 @@
 #define THORNADO_DEBUG_EULER
 #endif
 
-
-
-
-
 MODULE Euler_dgDiscretizationModule
 
   USE KindModule, ONLY: &
@@ -113,14 +109,6 @@ CONTAINS
                dX2 => MeshX(2) % Width, &
                dX3 => MeshX(3) % Width )
 
-    SuppressBC = .FALSE.
-    IF( PRESENT( SuppressBC_Option ) ) &
-      SuppressBC = SuppressBC_Option
-
-    IF( .NOT. SuppressBC ) &
-      CALL ApplyBoundaryConditions_Euler &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
-
     CALL TimersStart_Euler( Timer_Euler_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
@@ -136,6 +124,14 @@ CONTAINS
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CopyIn )
+
+    SuppressBC = .FALSE.
+    IF( PRESENT( SuppressBC_Option ) ) &
+      SuppressBC = SuppressBC_Option
+
+    IF( .NOT. SuppressBC ) &
+      CALL ApplyBoundaryConditions_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -161,13 +157,13 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_Divergence )
 
-    CALL ComputeIncrement_Divergence_X1 &
+    CALL ComputeIncrement_Euler_Divergence_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-    CALL ComputeIncrement_Divergence_X2 &
+    CALL ComputeIncrement_Euler_Divergence_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
-    CALL ComputeIncrement_Divergence_X3 &
+    CALL ComputeIncrement_Euler_Divergence_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     CALL TimersStop_Euler( Timer_Euler_Divergence )
@@ -251,7 +247,7 @@ CONTAINS
   END SUBROUTINE Euler_ComputeIncrement_DG_Explicit
 
 
-  SUBROUTINE ComputeIncrement_Divergence_X1 &
+  SUBROUTINE ComputeIncrement_Euler_Divergence_X1 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
@@ -825,10 +821,10 @@ CONTAINS
 
     END ASSOCIATE
 
-  END SUBROUTINE ComputeIncrement_Divergence_X1
+  END SUBROUTINE ComputeIncrement_Euler_Divergence_X1
 
 
-  SUBROUTINE ComputeIncrement_Divergence_X2 &
+  SUBROUTINE ComputeIncrement_Euler_Divergence_X2 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
@@ -1408,10 +1404,10 @@ CONTAINS
 
     END ASSOCIATE
 
-  END SUBROUTINE ComputeIncrement_Divergence_X2
+  END SUBROUTINE ComputeIncrement_Euler_Divergence_X2
 
 
-  SUBROUTINE ComputeIncrement_Divergence_X3 &
+  SUBROUTINE ComputeIncrement_Euler_Divergence_X3 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
     INTEGER, INTENT(in)     :: &
@@ -1985,7 +1981,7 @@ CONTAINS
 
     END ASSOCIATE
 
-  END SUBROUTINE ComputeIncrement_Divergence_X3
+  END SUBROUTINE ComputeIncrement_Euler_Divergence_X3
 
 
 !!$  SUBROUTINE ComputeIncrement_Geometry &
