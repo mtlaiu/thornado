@@ -19,7 +19,9 @@ MODULE Euler_UtilitiesModule_NonRelativistic
     ComputeAuxiliary_Fluid
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_ComputeTimeStep
+    Timer_Euler_ComputeTimeStep, &
+    Timer_Euler_CopyIn, &
+    Timer_Euler_CopyOut
 
   IMPLICIT NONE
   PRIVATE
@@ -211,7 +213,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeTimeStep_Euler_NonRelativistic &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -223,97 +225,82 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       TimeStep
 
-    INTEGER  :: iX1, iX2, iX3, iNodeX
-    REAL(DP) :: dX(3), dt(3)
-    REAL(DP) :: P(nDOFX,nPF)
-    REAL(DP) :: Cs(nDOFX)
-    REAL(DP) :: EigVals_X1(nCF,nDOFX), alpha_X1, &
-                EigVals_X2(nCF,nDOFX), alpha_X2, &
-                EigVals_X3(nCF,nDOFX), alpha_X3
+    INTEGER  :: iX1, iX2, iX3, iNodeX, iDimX
+    REAL(DP) :: dX(3), dt
+    REAL(DP) :: P(nPF), Cs, EigVals(nCF)
+
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width )
+
+    CALL TimersStart_Euler( Timer_Euler_CopyIn )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: G, U, iX_B0, iX_E0, iX_B1, iX_E1, &
+    !$OMP          dX1, dX2, dX3 )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  G, U, iX_B0, iX_E0, iX_B1, iX_E1, &
+    !$ACC          dX1, dX2, dX3 )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_CopyIn )
 
     CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
 
     TimeStep = HUGE( One )
-    dt       = HUGE( One )
 
-    ! --- Maximum wave-speeds ---
+#if defined(THORNADO_OMP_OL)
 
-    alpha_X1 = -HUGE( One )
-    alpha_X2 = -HUGE( One )
-    alpha_X3 = -HUGE( One )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( dX, dt, P, Cs, EigVals ) &
+    !$ACC PRESENT( U, G, dX1, dX2, dX3, iX_B0, iX_E0 ) &
+    !$ACC REDUCTION( MIN: TimeStep )
+#elif defined(THORNADO_OMP)
 
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      dX(1) = MeshX(1) % Width(iX1)
-      dX(2) = MeshX(2) % Width(iX2)
-      dX(3) = MeshX(3) % Width(iX3)
-
-      CALL ComputePrimitive_Euler_NonRelativistic &
-             ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
-               U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
-               U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
-               P(:,iPF_D), P(:,iPF_V1), P(:,iPF_V2), P(:,iPF_V3), &
-               P(:,iPF_E), P(:,iPF_Ne), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
-
-      CALL ComputeSoundSpeedFromPrimitive &
-             ( P(:,iPF_D), P(:,iPF_E), P(:,iPF_Ne), Cs(:) )
-
       DO iNodeX = 1, nDOFX
 
-        EigVals_X1(:,iNodeX) &
-          = Eigenvalues_Euler_NonRelativistic &
-              ( P (iNodeX,iPF_V1), &
-                Cs(iNodeX),        &
-                G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) )
+        dX(1) = dX1(iX1)
+        dX(2) = dX2(iX2)
+        dX(3) = dX3(iX3)
+
+        CALL ComputePrimitive_Euler_NonRelativistic &
+               ( U(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 P(iPF_D ), P(iPF_V1), P(iPF_V2), &
+                 P(iPF_V3), P(iPF_E ), P(iPF_Ne), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        CALL ComputeSoundSpeedFromPrimitive &
+               ( P(iPF_D), P(iPF_E), P(iPF_Ne), Cs )
+
+        DO iDimX = 1, nDimsX
+
+          EigVals &
+            = Eigenvalues_Euler_NonRelativistic &
+                ( P(iPF_V1+(iDimX-1)), Cs, G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11+(iDimX-1)) )
+
+          dt = dX(iDimX) / MAX( SqrtTiny, MAXVAL( ABS( EigVals ) ) )
+
+          TimeStep = MIN( TimeStep, dt )
+
+        END DO
 
       END DO
-
-      alpha_X1 = MAX( alpha_X1, MAXVAL( ABS( EigVals_X1 ) ) )
-
-      dt(1) = dX(1) / alpha_X1
-
-      IF( nDimsX .GT. 1 )THEN
-
-        DO iNodeX = 1, nDOFX
-
-          EigVals_X2(:,iNodeX) &
-            = Eigenvalues_Euler_NonRelativistic &
-                ( P (iNodeX,iPF_V2), &
-                  Cs(iNodeX),        &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) )
-
-        END DO
-
-        alpha_X2 = MAX( alpha_X2, MAXVAL( ABS( EigVals_X2 ) ) )
-
-        dt(2) = dX(2) / alpha_X2
-
-      END IF
-
-      IF( nDimsX .GT. 2 )THEN
-
-        DO iNodeX = 1, nDOFX
-
-          EigVals_X3(:,iNodeX) &
-            = Eigenvalues_Euler_NonRelativistic &
-                ( P (iNodeX,iPF_V3), &
-                  Cs(iNodeX),        &
-                  G (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
-
-        END DO
-
-        alpha_X3 = MAX( alpha_X3, MAXVAL( ABS( EigVals_X3 ) ) )
-
-        dt(3) = dX(3) / alpha_X3
-
-      END IF
-
-      TimeStep = MIN( TimeStep, MINVAL( dt ) )
 
     END DO
     END DO
@@ -322,6 +309,22 @@ CONTAINS
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
 
     CALL TimersStop_Euler( Timer_Euler_ComputeTimeStep )
+
+    CALL TimersStart_Euler( Timer_Euler_CopyOut )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: G, U, iX_B0, iX_E0, iX_B1, iX_E1, &
+    !$OMP               dX1, dX2, dX3 )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE(       G, U, iX_B0, iX_E0, iX_B1, iX_E1, &
+    !$ACC               dX1, dX2, dX3 )
+#endif
+
+    CALL TimersStop_Euler( Timer_Euler_CopyOut )
+
+    END ASSOCIATE ! dX1, etc.
 
   END SUBROUTINE ComputeTimeStep_Euler_NonRelativistic
 
