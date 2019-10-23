@@ -119,13 +119,13 @@ PROGRAM ApplicationDriver
 
        Gamma = 4.0d0 / 3.0d0
 
-       nX = [ 16, 1, 1 ]
+       nX = [ 32, 32, 32 ]
        xL = [ 0.0d0, 0.0d0, 0.0d0 ]
        xR = [ 1.0d0, 1.0d0, 1.0d0 ]
 
-       bcX = [ 1, 0, 0 ]
+       bcX = [ 1, 1, 1 ]
 
-       t_end = 1.0d1
+       t_end = 1.0d-1
 
     CASE( 'RiemannProblem' )
 
@@ -338,9 +338,9 @@ PROGRAM ApplicationDriver
   Min_1 = 1.0d-13
   Min_2 = 1.0d-13
 
-  iCycleD = 1
+  iCycleD = 10
 !!$  iCycleW = 10; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * t_end; iCycleW = -1
+  dt_wrt = 1.0d-1 * t_end; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
