@@ -14,7 +14,8 @@ MODULE Euler_BoundaryConditionsModule
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_BoundaryConditions
+    Timer_Euler_BoundaryConditions, &
+    Timer_Euler_CopyIn, Timer_Euler_CopyOut
 
   IMPLICIT NONE
   PRIVATE
@@ -85,12 +86,12 @@ CONTAINS
 
     INTEGER :: iApplyBC(3)
 
-    CALL TimersStart_Euler( Timer_Euler_BoundaryConditions )
-
     iApplyBC = iEuler_ApplyBC_Both
 
     IF( PRESENT( iApplyBC_Option ) ) &
       iApplyBC = iApplyBC_Option
+
+    CALL TimersStart_Euler( Timer_Euler_CopyIn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -99,6 +100,10 @@ CONTAINS
     !$ACC ENTER DATA &
     !$ACC COPYIN( U, iX_B0, iX_E0, iX_B1, iX_E1, iApplyBC )
 #endif
+
+    CALL TimersStop_Euler( Timer_Euler_CopyIn )
+
+    CALL TimersStart_Euler( Timer_Euler_BoundaryConditions )
 
     CALL Euler_ApplyBC_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -118,6 +123,10 @@ CONTAINS
                        iX_B1(2):iX_E1(2), &
                        iX_B1(3):iX_E1(3),1:nCF), iApplyBC(3) )
 
+    CALL TimersStop_Euler( Timer_Euler_BoundaryConditions )
+
+    CALL TimersStart_Euler( Timer_Euler_CopyOut )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: U ) &
@@ -128,7 +137,7 @@ CONTAINS
     !$ACC DELETE( iX_B0, iX_E0, iX_B1, iX_E1, iApplyBC )
 #endif
 
-    CALL TimersStop_Euler( Timer_Euler_BoundaryConditions )
+    CALL TimersStop_Euler( Timer_Euler_CopyOut )
 
   END SUBROUTINE ApplyBoundaryConditions_Euler
 
@@ -503,10 +512,27 @@ CONTAINS
       ! --- Inner Boundary ---
       IF( ApplyInnerBC( iApplyBC ) )THEN
 
-        R_0 = MeshX(1) % Center(1) &
-                + MeshX(1) % Width(1) &
-                    * MeshX(1) % Nodes(1)
+        ASSOCIATE( X1_C  => MeshX(1) % Center, &
+                   dX1   => MeshX(1) % Width,  &
+                   eta_q => MeshX(1) % Nodes )
 
+        R_0 = X1_C(1) + dX1(1) * eta_q(1)
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6), &
+        !$OMP PRIVATE( iNodeX, iNodeX_0, D_0, E_0, R_q ) &
+        !$OMP FIRSTPRIVATE( R_0 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC COPYIN( X1_C, dX1, eta_q ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX ) &
+        !$ACC PRIVATE( iNodeX, iNodeX_0, D_0, E_0, R_q ) &
+        !$ACC FIRSTPRIVATE( R_0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNodeX, iNodeX_0, D_0, E_0, R_q ) &
+        !$OMP FIRSTPRIVATE( R_0 )
+#endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = 1, swX(1)
@@ -521,7 +547,7 @@ CONTAINS
             D_0 = U(iNodeX_0,1,iX2,iX3,iCF_D)
             E_0 = U(iNodeX_0,1,iX2,iX3,iCF_E)
 
-            R_q = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNodeX1 )
+            R_q = NodeCoordinate( X1_C( iX1 ), dX1( iX1 ), eta_q( iNodeX1 ) )
 
             U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
               = D_0 * ( R_0 / R_q )**3
@@ -536,6 +562,8 @@ CONTAINS
         END DO
         END DO
         END DO
+
+        END ASSOCIATE
 
       END IF
 
