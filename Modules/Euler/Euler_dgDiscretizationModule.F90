@@ -92,11 +92,11 @@ CONTAINS
     INTEGER, INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)           :: &
-      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
     REAL(DP), INTENT(inout)        :: &
-      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+      U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(out)          :: &
-      dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
 
@@ -142,9 +142,9 @@ CONTAINS
     !$OMP PARALLEL DO SIMD COLLAPSE(5)
 #endif
     DO iCF = 1, nCF
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
     DO iNodeX = 1, nDOFX
 
       dU(iNodeX,iX1,iX2,iX3,iCF) = 0.0d0
@@ -256,7 +256,7 @@ CONTAINS
       G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
       U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nCF)
+      dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
     INTEGER  :: nK(3), nK_X1(3), nCF_K, nCF_F, nGF_F
     INTEGER  :: iNodeX, iNodeX_X1, iX1, iX2, iX3, iCF, iGF, iErr = 0
@@ -284,7 +284,6 @@ CONTAINS
     REAL(DP) :: uCF_F_R      (nDOFX_X1,nCF,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)+1)
-
     REAL(DP) :: dU_X1        (nDOFX,   nCF,iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(1)  :iX_E0(1)  )
@@ -833,7 +832,7 @@ CONTAINS
       G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
       U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nCF)
+      dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
     INTEGER  :: nK(3), nK_X2(3), nCF_K, nCF_F, nGF_F
     INTEGER  :: iNodeX, iNodeX_X2, iX1, iX2, iX3, iCF, iGF, iErr = 0
@@ -851,7 +850,6 @@ CONTAINS
     REAL(DP) :: G_F          (nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)  :iX_E0(2)+1)
-
     REAL(DP) :: uCF_K        (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(3)  :iX_E0(3), &
                                            iX_B0(2)-1:iX_E0(2)+1)
@@ -1416,7 +1414,7 @@ CONTAINS
       G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
       U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      dU(1:nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nCF)
+      dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
     INTEGER  :: nK(3), nK_X3(3), nCF_K, nCF_F, nGF_F
     INTEGER  :: iNodeX, iNodeX_X3, iX1, iX2, iX3, iCF, iGF, iErr = 0
@@ -1434,7 +1432,6 @@ CONTAINS
     REAL(DP) :: G_F          (nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)  :iX_E0(3)+1)
-
     REAL(DP) :: uCF_K        (nDOFX,   nCF,iX_B0(1)  :iX_E0(1), &
                                            iX_B0(2)  :iX_E0(2), &
                                            iX_B0(3)-1:iX_E0(3)+1)
