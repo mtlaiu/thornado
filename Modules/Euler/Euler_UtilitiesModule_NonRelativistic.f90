@@ -335,7 +335,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     ! --- Vi is the ith contravariant component of the three-velocity
@@ -358,7 +358,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP)             :: AlphaMiddle_Euler_NonRelativistic
@@ -383,7 +383,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP)             :: Flux_X1_Euler_NonRelativistic(nCF)
@@ -411,7 +411,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP)             :: Flux_X2_Euler_NonRelativistic(nCF)
@@ -439,7 +439,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP)             :: Flux_X3_Euler_NonRelativistic(nCF)
@@ -467,7 +467,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP)             :: StressTensor_Diagonal_Euler_NonRelativistic(3)
@@ -487,7 +487,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP)             :: NumericalFlux_HLL_Euler_NonRelativistic(nCF)
@@ -506,7 +506,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP)             :: &
@@ -577,7 +577,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP)             :: &
@@ -648,7 +648,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ 
+    !$ACC ROUTINE SEQ
 #endif
 
     REAL(DP)             :: &
