@@ -41,7 +41,7 @@ MODULE TimeSteppingModule_SSPRK
       REAL(DP), INTENT(inout) :: &
         U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       REAL(DP), INTENT(out)   :: &
-        dU(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+        dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
       LOGICAL, INTENT(in), OPTIONAL :: &
         SuppressBC_Option
     END SUBROUTINE FluidIncrement
@@ -85,9 +85,9 @@ CONTAINS
 
     ALLOCATE( D_SSPRK &
                 (1:nDOFX, &
-                 iX_B0(1):iX_E0(1), &
-                 iX_B0(2):iX_E0(2), &
-                 iX_B0(3):iX_E0(3), &
+                 iX_B1(1):iX_E1(1), &
+                 iX_B1(2):iX_E1(2), &
+                 iX_B1(3):iX_E1(3), &
                  1:nCF,1:nStages) )
 
   END SUBROUTINE InitializeFluid_SSPRK
@@ -187,7 +187,7 @@ CONTAINS
                  ( One, &
                    U_SSPRK(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
                    dt * a_SSPRK(iS,jS), &
-                   D_SSPRK(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:,jS) )
+                   D_SSPRK(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:,jS) )
 
         END IF
 
@@ -210,7 +210,7 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G      (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
                  U_SSPRK(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-                 D_SSPRK(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:,iS) )
+                 D_SSPRK(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:,iS) )
 
       END IF
 
@@ -224,7 +224,7 @@ CONTAINS
                ( One, &
                  U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
                  dt * w_SSPRK(iS), &
-                 D_SSPRK(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:,iS) )
+                 D_SSPRK(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:,iS) )
 
       END IF
 
@@ -253,15 +253,15 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(in)    :: &
-      D(:,iX_B0(1):,iX_B0(2):,iX_B0(3):,:)
+      D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
     INTEGER :: iCF, iX1, iX2, iX3
 
     DO iCF = 1, nCF
 
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
 
         U(:,iX1,iX2,iX3,iCF) &
           = alpha * U(:,iX1,iX2,iX3,iCF) &
