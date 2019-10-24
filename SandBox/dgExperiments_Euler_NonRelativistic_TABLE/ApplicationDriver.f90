@@ -106,7 +106,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 32, 32, 32 ]
+      nX = [ 08, 08, 08 ]
       xL = [ 0.0d0, 0.0d0, 0.0d0 ] * Kilometer
       xR = [ 1.0d2, 1.0d2, 1.0d2 ] * Kilometer
 
