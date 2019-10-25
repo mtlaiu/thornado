@@ -19,7 +19,6 @@ MODULE Euler_UtilitiesModule_NonRelativistic
     ComputeAuxiliary_Fluid
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_ComputeTimeStep, &
     Timer_Euler_CopyIn, &
     Timer_Euler_CopyOut
 
@@ -248,8 +247,6 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_CopyIn )
 
-    CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
-
     TimeStep = HUGE( One )
 
 #if defined(THORNADO_OMP_OL)
@@ -307,8 +304,6 @@ CONTAINS
     END DO
 
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
-
-    CALL TimersStop_Euler( Timer_Euler_ComputeTimeStep )
 
     CALL TimersStart_Euler( Timer_Euler_CopyOut )
 

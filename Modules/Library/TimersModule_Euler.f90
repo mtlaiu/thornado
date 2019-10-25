@@ -14,6 +14,7 @@ MODULE TimersModule_Euler
 
   ! --- ApplicationDriver ---
   REAL(DP), PUBLIC :: Timer_Euler_Initialize
+  REAL(DP), PUBLIC :: Timer_Euler_Evolve
   REAL(DP), PUBLIC :: Timer_Euler_ComputeTimeStep
   REAL(DP), PUBLIC :: Timer_Euler_UpdateFluid
   REAL(DP), PUBLIC :: Timer_Euler_InputOutput
@@ -61,6 +62,7 @@ CONTAINS
     Timer_Euler_Program         = Zero
 
     Timer_Euler_Initialize      = Zero
+    Timer_Euler_Evolve          = Zero
     Timer_Euler_ComputeTimeStep = Zero
     Timer_Euler_UpdateFluid     = Zero
     Timer_Euler_InputOutput     = Zero
@@ -163,6 +165,12 @@ CONTAINS
         'Timers = ', TotalTime, ' s = ', &
         100.0_DP * TotalTime / Timer_Euler_Program, ' %'
       WRITE(*,*)
+
+      WRITE(*,TRIM(TimeAD)) &
+        'Evolve:            ', &
+        Timer_Euler_Evolve, ' s = ', &
+        100.0_DP &
+        * Timer_Euler_Evolve / Timer_Euler_Program, ' %'
 
       WRITE(*,TRIM(TimeAD)) &
         'Initialize:        ', &
