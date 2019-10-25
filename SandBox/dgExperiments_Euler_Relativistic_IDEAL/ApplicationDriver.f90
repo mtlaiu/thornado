@@ -124,7 +124,7 @@ PROGRAM ApplicationDriver
 
        bcX = [ 1, 1, 1 ]
 
-       t_end = 1.0d-1
+       t_end = 1.0d0
 
     CASE( 'RiemannProblem' )
 
@@ -337,9 +337,9 @@ PROGRAM ApplicationDriver
   Min_1 = 1.0d-13
   Min_2 = 1.0d-13
 
-  iCycleD = 10
+  iCycleD = 1
 !!$  iCycleW = 10; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-1 * t_end; iCycleW = -1
+  dt_wrt = 1.0d0 * t_end; iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -469,6 +469,14 @@ PROGRAM ApplicationDriver
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
+!!$#if defined(THORNADO_OMP_OL)
+!!$  !$OMP TARGET ENTER DATA &
+!!$  !$OMP MAP( to: uGF, uCF, iX_B0, iX_E0, iX_B1, iX_E1 )
+!!$#elif defined(THORNADO_OACC)
+!!$  !$ACC ENTER DATA &
+!!$  !$ACC COPYIN(  uGF, uCF, iX_B0, iX_E0, iX_B1, iX_E1 )
+!!$#endif
+
   iCycle = 0
   Timer_Evolution = MPI_WTIME()
   DO WHILE( t .LT. t_end )
@@ -526,6 +534,14 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
+!!$#if defined(THORNADO_OMP_OL)
+!!$      !$OMP TARGET EXIT DATA &
+!!$      !$OMP MAP( from: uGF, uCF )
+!!$#elif defined(THORNADO_OACC)
+!!$      !$ACC EXIT DATA &
+!!$      !$ACC COPYOUT(   uGF, uCF )
+!!$#endif
+
       CALL TimersStart_Euler( Timer_Euler_InputOutput )
       CALL ComputeFromConserved_Euler_Relativistic &
              ( iX_B0(1:3), iX_E0(1:3), iX_B1(1:3), iX_E1(1:3), &
@@ -557,6 +573,14 @@ PROGRAM ApplicationDriver
     END IF
 
   END DO
+
+!!$#if defined(THORNADO_OMP_OL)
+!!$      !$OMP TARGET EXIT DATA &
+!!$      !$OMP MAP( from: uGF, uCF )
+!!$#elif defined(THORNADO_OACC)
+!!$      !$ACC EXIT DATA &
+!!$      !$ACC COPYOUT(   uGF, uCF )
+!!$#endif
 
   Timer_Evolution = MPI_WTIME() - Timer_Evolution
   WRITE(*,*)
