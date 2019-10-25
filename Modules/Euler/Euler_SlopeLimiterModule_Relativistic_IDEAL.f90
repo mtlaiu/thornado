@@ -2,21 +2,12 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
 
   USE KindModule, ONLY: &
     DP, Zero, One, SqrtTiny
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_TroubledCellIndicator
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDimsX, nNodes, nNodesX
   USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX, &
-    NodesX1, WeightsX1, &
-    NodesX2, WeightsX2, &
-    NodesX3, WeightsX3, &
     WeightsX_q
   USE UtilitiesModule, ONLY: &
     MinModB, NodeNumberX
-  USE PolynomialBasisModule_Lagrange, ONLY: &
-    L_X1, L_X2, L_X3
   USE PolynomialBasisModule_Legendre, ONLY: &
     P_X1, P_X2, P_X3, IndPX_Q
   USE PolynomialBasisMappingModule, ONLY: &
@@ -35,16 +26,19 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     iGF_Beta_3,   &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_E, &
+    nCF, &
     Shock
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL, ONLY: &
     ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
+  USE Euler_TroubledCellIndicatorModule_Relativistic_IDEAL, ONLY: &
+    InitializeTroubledCellIndicator_Euler_Relativistic_IDEAL, &
+    FinalizeTroubledCellIndicator_Euler_Relativistic_IDEAL, &
+    DetectTroubledCells_Euler_Relativistic_IDEAL
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
-    Timer_Euler_SlopeLimiter, &
-    Timer_Euler_TroubledCellIndicator
+    Timer_Euler_SlopeLimiter
 
   IMPLICIT NONE
   PRIVATE
@@ -159,7 +153,15 @@ CONTAINS
     END IF
 
     IF( UseTroubledCellIndicator ) &
-      CALL InitializeTroubledCellIndicator
+      CALL InitializeTroubledCellIndicator_Euler_Relativistic_IDEAL
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: Shock )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE(     Shock )
+#endif
 
     I_6x6 = Zero
     DO i = 1, 6
@@ -171,8 +173,16 @@ CONTAINS
 
   SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Shock )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE(       Shock )
+#endif
+
     IF( UseTroubledCellIndicator ) &
-      CALL FinalizeTroubledCellIndicator
+      CALL FinalizeTroubledCellIndicator_Euler_Relativistic_IDEAL
 
   END SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
@@ -219,8 +229,26 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    CALL DetectTroubledCells &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO SIMD COLLAPSE(3)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      Shock(iX1,iX2,iX3) = 1.1_DP * LimiterThreshold
+
+    END DO
+    END DO
+    END DO
+
+    IF( UseTroubledCellIndicator ) &
+      CALL DetectTroubledCells_Euler_Relativistic_IDEAL &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     LimitedCell = .FALSE.
 
@@ -429,280 +457,6 @@ CONTAINS
     CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
 
   END SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL
-
-
-  SUBROUTINE InitializeTroubledCellIndicator
-
-    INTEGER  :: iNode, iNodeX1, iNodeX2, iNodeX3
-    INTEGER  :: jNode, jNodeX1, jNodeX2, jNodeX3
-    REAL(DP) :: WeightX
-
-    ALLOCATE( WeightsX_X1_P(nDOFX), WeightsX_X1_N(nDOFX) )
-    ALLOCATE( WeightsX_X2_P(nDOFX), WeightsX_X2_N(nDOFX) )
-    ALLOCATE( WeightsX_X3_P(nDOFX), WeightsX_X3_N(nDOFX) )
-
-    ! --- Compute Weights for Extrapolating Neighbors into Target Cell ---
-
-    DO jNode = 1, nDOFX
-
-      jNodeX1 = NodeNumberTableX(1,jNode)
-      jNodeX2 = NodeNumberTableX(2,jNode)
-      jNodeX3 = NodeNumberTableX(3,jNode)
-
-      WeightsX_X1_P(jNode) = Zero
-      WeightsX_X1_N(jNode) = Zero
-      WeightsX_X2_P(jNode) = Zero
-      WeightsX_X2_N(jNode) = Zero
-      WeightsX_X3_P(jNode) = Zero
-      WeightsX_X3_N(jNode) = Zero
-
-      DO iNode = 1, nDOFX
-
-        iNodeX1 = NodeNumberTableX(1,iNode)
-        iNodeX2 = NodeNumberTableX(2,iNode)
-        iNodeX3 = NodeNumberTableX(3,iNode)
-
-        WeightX = WeightsX1  (iNodeX1) &
-                  * WeightsX2(iNodeX2) &
-                  * WeightsX3(iNodeX3)
-
-        WeightsX_X1_P(jNode) &
-          = WeightsX_X1_P(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) + One ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) ) )
-
-        WeightsX_X1_N(jNode) &
-          = WeightsX_X1_N(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) - One ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) ) )
-
-        WeightsX_X2_P(jNode) &
-          = WeightsX_X2_P(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) + One ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) ) )
-
-        WeightsX_X2_N(jNode) &
-          = WeightsX_X2_N(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) - One ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) ) )
-
-        WeightsX_X3_P(jNode) &
-          = WeightsX_X3_P(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) + One ) )
-
-        WeightsX_X3_N(jNode) &
-          = WeightsX_X3_N(jNode) &
-              + WeightX &
-                * ( L_X1  (jNodeX1) % P( NodesX1(iNodeX1) ) &
-                    * L_X2(jNodeX2) % P( NodesX2(iNodeX2) ) &
-                    * L_X3(jNodeX3) % P( NodesX3(iNodeX3) - One ) )
-
-      END DO
-
-    END DO
-
-  END SUBROUTINE InitializeTroubledCellIndicator
-
-
-  SUBROUTINE FinalizeTroubledCellIndicator
-
-    DEALLOCATE( WeightsX_X1_P, WeightsX_X1_N )
-    DEALLOCATE( WeightsX_X2_P, WeightsX_X2_N )
-    DEALLOCATE( WeightsX_X3_P, WeightsX_X3_N )
-
-  END SUBROUTINE FinalizeTroubledCellIndicator
-
-
-  SUBROUTINE DetectTroubledCells( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
-
-    INTEGER,  INTENT(in) :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    INTEGER  :: iX1, iX2, iX3, iCF
-    REAL(DP) :: V_K (0:2*nDimsX)
-    REAL(DP) :: U_K (0:2*nDimsX,nCF)
-    REAL(DP) :: U_K0(0:2*nDimsX,nCF)
-
-    Shock = Zero
-
-    IF( .NOT. UseTroubledCellIndicator )THEN
-
-      Shock = 1.1_DP * LimiterThreshold
-      RETURN
-
-    END IF
-
-    CALL TimersStart_Euler( Timer_Euler_TroubledCellIndicator )
-
-    ! --- Troubled-Cell Indicator from Fu & Shu (2017) ---
-    ! --- JCP, 347, 305 - 327 ----------------------------
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-
-      ! --- Compute Cell Volumes and Cell Averages ---------
-      ! --- in Target Cell and Neighbors in X1 Direction ---
-
-      V_K(0) = DOT_PRODUCT &
-                 ( WeightsX_q, G(:,iX1,  iX2,iX3,iGF_SqrtGm) )
-
-      V_K(1) = DOT_PRODUCT &
-                 ( WeightsX_q, G(:,iX1-1,iX2,iX3,iGF_SqrtGm) )
-
-      V_K(2) = DOT_PRODUCT &
-                 ( WeightsX_q, G(:,iX1+1,iX2,iX3,iGF_SqrtGm) )
-
-      DO iCF = 1, nCF
-
-        U_K(0,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1,iX2,iX3,iCF) ) / V_K(0)
-
-        U_K(1,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(1)
-
-        U_K0(1,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_X1_P, &
-                G(:,iX1-1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1-1,iX2,iX3,iCF) ) / V_K(0)
-
-        U_K(2,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_q, &
-                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(2)
-
-        U_K0(2,iCF) &
-          = DOT_PRODUCT &
-              ( WeightsX_X1_N, &
-                G(:,iX1+1,iX2,iX3,iGF_SqrtGm) &
-                  * U(:,iX1+1,iX2,iX3,iCF) ) / V_K(0)
-
-      END DO
-
-      ! --- Compute Cell Volumes and Cell Averages ---
-      ! --- in Neighbors in X2 Direction -------------
-
-      IF( nDimsX .GT. 1 )THEN
-
-        V_K(3) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2-1,iX3,iGF_SqrtGm) )
-
-        V_K(4) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2+1,iX3,iGF_SqrtGm) )
-
-        DO iCF = 1, nCF
-
-          U_K(3,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2-1,iX3,iCF) ) / V_K(3)
-
-          U_K0(3,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X2_P, &
-                  G(:,iX1,iX2-1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2-1,iX3,iCF) ) / V_K(0)
-
-          U_K(4,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2+1,iX3,iCF) ) / V_K(4)
-
-          U_K0(4,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X2_N, &
-                  G(:,iX1,iX2+1,iX3,iGF_SqrtGm) &
-                    * U(:,iX1,iX2+1,iX3,iCF) ) / V_K(0)
-
-        END DO
-
-      END IF
-
-      ! --- Compute Cell Volumes and Cell Averages ---
-      ! --- in Neighbors in X3 Direction -------------
-
-      IF( nDimsX .GT. 2 )THEN
-
-        V_K(5) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2,iX3-1,iGF_SqrtGm) )
-
-        V_K(6) = DOT_PRODUCT &
-                   ( WeightsX_q, G(:,iX1,iX2,iX3+1,iGF_SqrtGm) )
-
-        DO iCF = 1, nCF
-
-          U_K(5,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3-1,iCF) ) / V_K(5)
-
-          U_K0(5,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X3_P, &
-                  G(:,iX1,iX2,iX3-1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3-1,iCF) ) / V_K(0)
-
-          U_K(6,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_q, &
-                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3+1,iCF) ) / V_K(6)
-
-          U_K0(6,iCF) &
-            = DOT_PRODUCT &
-                ( WeightsX_X3_N, &
-                  G(:,iX1,iX2,iX3+1,iGF_SqrtGm) &
-                    * U(:,iX1,iX2,iX3+1,iCF) ) / V_K(0)
-
-        END DO
-
-      END IF
-
-      ! --- Use Conserved Density to Detect Troubled Cell ---
-
-      Shock(iX1,iX2,iX3) &
-        = SUM( ABS( U_K(0,iCF_D) - U_K0(1:2*nDimsX,iCF_D) ) ) &
-            / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_D) ) )
-
-      ! --- Use Conserved Energy  to Detect Troubled Cell ---
-
-      Shock(iX1,iX2,iX3) &
-        = MAX( Shock(iX1,iX2,iX3), &
-               SUM( ABS( U_K(0,iCF_E) - U_K0(1:2*nDimsX,iCF_E) ) ) &
-                 / MAXVAL( ABS( U_K(0:2*nDimsX,iCF_E) ) ) )
-
-    END DO
-    END DO
-    END DO
-
-    CALL TimersStop_Euler( Timer_Euler_TroubledCellIndicator )
-
-  END SUBROUTINE DetectTroubledCells
 
 
   SUBROUTINE ApplyConservativeCorrection &
