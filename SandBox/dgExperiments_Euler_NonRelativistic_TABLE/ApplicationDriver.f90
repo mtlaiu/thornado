@@ -64,6 +64,8 @@ PROGRAM ApplicationDriver
     TimersStop_Euler, &
     Timer_Euler_InputOutput, &
     Timer_Euler_Initialize, &
+    Timer_Euler_Evolve, &
+    Timer_Euler_ComputeTimeStep, &
     Timer_Euler_UpdateFluid, &
     Timer_Euler_Finalize
 
@@ -106,7 +108,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 32, 32, 32 ]
+      nX = [ 12, 12, 12 ]
       xL = [ 0.0d0, 0.0d0, 0.0d0 ] * Kilometer
       xR = [ 1.0d2, 1.0d2, 1.0d2 ] * Kilometer
 
@@ -126,7 +128,7 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter      = .FALSE.
 
       iCycleD = 1
-      t_end   = 0.5d0 * ( 1.0d5 / SpeedOfLightMKS ) * Second
+      t_end   = 1.0d1 * ( 1.0d5 / SpeedOfLightMKS ) * Second
       dt_wrt  = 1.0d-0 * t_end
 
     CASE( 'RiemannProblem' )
@@ -368,16 +370,28 @@ PROGRAM ApplicationDriver
            uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
            SuppressTally_Option = .TRUE. )
 
+  CALL TimersStart_Euler( Timer_Euler_Evolve )
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET ENTER DATA &
+  !$OMP MAP( to: uGF, uCF, iX_B0, iX_E0, iX_B1, iX_E1 )
+#elif defined(THORNADO_OACC)
+  !$ACC ENTER DATA &
+  !$ACC COPYIN(  uGF, uCF, iX_B0, iX_E0, iX_B1, iX_E1 )
+#endif
+
   iCycle = 0
   DO WHILE ( t < t_end )
 
     iCycle = iCycle + 1
 
+    CALL TimersStart_Euler( Timer_Euler_ComputeTimeStep )
+
     CALL ComputeTimeStep_Euler_NonRelativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
-             uCF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
              CFL = 0.5_DP / ( Two * DBLE( nNodes - 1 ) + One ), TimeStep = dt )
+
+    CALL TimersStop_Euler( Timer_Euler_ComputeTimeStep )
 
     IF( t + dt > t_end )THEN
 
@@ -415,6 +429,14 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( from: uGF, uCF )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA &
+      !$ACC COPYOUT(   uGF, uCF )
+#endif
+
       CALL ComputeFromConserved_Euler_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, &
                uGF(:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),:), &
@@ -440,6 +462,16 @@ PROGRAM ApplicationDriver
     END IF
 
   END DO
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( from: uGF, uCF )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA &
+      !$ACC COPYOUT(   uGF, uCF )
+#endif
+
+  CALL TimersStop_Euler( Timer_Euler_Evolve )
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, &
