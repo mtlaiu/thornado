@@ -426,29 +426,12 @@ CONTAINS
     END DO
 
     CALL TimersStart_Euler( Timer_Euler_CopyOut )
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3), &
-    !$ACC PRESENT( Shock, iX_B0, iX_E0 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(3)
-#endif
-     DO iX3 = iX_B0(3), iX_E0(3)
-     DO iX2 = iX_B0(2), iX_E0(2)
-     DO iX1 = iX_B0(1), iX_E0(1)
 
-       Shock(iX1,iX2,iX3) = 1.999999999_DP
-
-     END DO
-     END DO
-     END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( Shock )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( Shock )
-#endif
+!!$#if defined(THORNADO_OMP_OL)
+!!$    !$OMP TARGET UPDATE FROM( Shock )
+!!$#elif defined(THORNADO_OACC)
+!!$    !$ACC UPDATE HOST( Shock )
+!!$#endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
