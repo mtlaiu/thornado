@@ -203,6 +203,8 @@ CONTAINS
         CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
 
+        ! --- Call Poseidon here? ---
+
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
@@ -227,6 +229,8 @@ CONTAINS
 
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    ! --- Call Poseidon here? ---
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 

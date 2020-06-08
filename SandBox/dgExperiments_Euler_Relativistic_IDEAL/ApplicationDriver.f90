@@ -448,6 +448,8 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
+  ! --- Initialize Poseidon here? ---
+
   CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = Mass )
 
@@ -692,6 +694,8 @@ PROGRAM ApplicationDriver
   CALL FinalizeReferenceElementX
 
   CALL FinalizeReferenceElementX_Lagrange
+
+  ! --- Finalize Poseidon here? ---
 
   CALL FinalizeEquationOfState
 
