@@ -96,12 +96,12 @@ MODULE InitializationModule_Relativistic
 
   REAL(DP), PARAMETER :: &
     PolytropicConstant_TOV &
-      = 1.0_DP / 20.0_DP * ( 3.0_DP / Pi )**( 2.0_DP / 3.0_DP ) &
-          * ( PlanckConstant / ( Erg * Second ) )**2 &
-          / ( AtomicMassUnit / Gram )**( 8.0_DP / 3.0_DP ) &
-          * ( Erg / Centimeter**3 ) &
-          / ( Gram / Centimeter**3 )**( 5.0_DP/ 3.0_DP )
-!!$      = 1.455e5_DP * Erg * Centimeter**3 / Gram**2
+!!$      = 1.0_DP / 20.0_DP * ( 3.0_DP / Pi )**( 2.0_DP / 3.0_DP ) &
+!!$          * ( PlanckConstant / ( Erg * Second ) )**2 &
+!!$          / ( AtomicMassUnit / Gram )**( 8.0_DP / 3.0_DP ) &
+!!$          * ( Erg / Centimeter**3 ) &
+!!$          / ( Gram / Centimeter**3 )**( 5.0_DP/ 3.0_DP )
+      = 1.455e5_DP * Erg * Centimeter**3 / Gram**2
 
 
 CONTAINS
@@ -1612,8 +1612,8 @@ CONTAINS
   SUBROUTINE InitializeFields_StaticTOV
 
     REAL(DP), PARAMETER :: &
-      CentralDensity = 3.301e14_DP * ( Gram / Centimeter**3 ), &
-!!$      CentralDensity = 7.906e14_DP * ( Gram / Centimeter**3 ), &
+!!$      CentralDensity = 3.301e14_DP * ( Gram / Centimeter**3 ), &
+      CentralDensity = 7.906e14_DP * ( Gram / Centimeter**3 ), &
       dX1            = 1.0e-4_DP * Kilometer, &
       TolF           = 1.0e-15_DP
 

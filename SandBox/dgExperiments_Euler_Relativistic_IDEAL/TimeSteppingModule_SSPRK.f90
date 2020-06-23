@@ -1,16 +1,38 @@
 MODULE TimeSteppingModule_SSPRK
 
   USE KindModule, ONLY: &
-    DP, Zero, One
+    DP, Zero, One, Three
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_B1, iX_E0, iX_E1, &
     nDOFX
+  USE GeometryFieldsModule, ONLY: &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    nCF
+    nCF,    &
+    iCF_D,  &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E,  &
+    iCF_Ne, &
+    nPF,    &
+    iPF_D,  &
+    iPF_V1, &
+    iPF_V2, &
+    iPF_V3, &
+    iPF_E,  &
+    iPF_Ne, &
+    iAF_P
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
+  USE EquationOfStateModule_IDEAL, ONLY: &
+    ComputePressureFromPrimitive_IDEAL
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputePrimitive_Euler_Relativistic
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, TimersStop_Euler, &
     Timer_Euler_UpdateFluid
@@ -48,6 +70,19 @@ MODULE TimeSteppingModule_SSPRK
         SuppressBC_Option
     END SUBROUTINE FluidIncrement
   END INTERFACE
+
+  INTERFACE
+    SUBROUTINE GravitySolver( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+      USE KindModule, ONLY: DP
+      INTEGER, INTENT(in)     :: &
+        iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+      REAL(DP), INTENT(inout) :: &
+        G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      REAL(DP), INTENT(in)    :: &
+        U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    END SUBROUTINE GravitySolver
+  END INTERFACE
+
 
 CONTAINS
 
@@ -157,11 +192,12 @@ CONTAINS
   END SUBROUTINE AllocateButcherTables_SSPRK
 
 
-  SUBROUTINE UpdateFluid_SSPRK( t, dt, G, U, D, ComputeIncrement_Fluid )
+  SUBROUTINE UpdateFluid_SSPRK &
+    ( t, dt, G, U, D, ComputeIncrement_Fluid, ComputeGravity )
 
-    REAL(DP), INTENT(in) :: &
+    REAL(DP), INTENT(in)    :: &
       t, dt
-    REAL(DP), INTENT(in) :: &
+    REAL(DP), INTENT(inout) :: &
       G(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       U(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
@@ -169,11 +205,24 @@ CONTAINS
       D(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     PROCEDURE (FluidIncrement) :: &
       ComputeIncrement_Fluid
+    PROCEDURE (GravitySolver), OPTIONAL :: &
+      ComputeGravity
+
+    ! --- S^1, S^2, S^3, S, E ---
+    REAL(DP) :: U_Poseidon(nDOFX,iX_B1(1):iX_E1(1), &
+                                 iX_B1(2):iX_E1(2), &
+                                 iX_B1(3):iX_E1(3),5)
+
+    LOGICAL :: SolveGravity
     LOGICAL :: DEBUG = .FALSE.
 
-    INTEGER :: iS, jS
+    INTEGER :: iS, jS, iX1, iX2, iX3
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
+
+    SolveGravity = .FALSE.
+    IF( PRESENT( ComputeGravity ) ) &
+      SolveGravity = .TRUE.
 
     U_SSPRK = Zero ! --- State
     D_SSPRK = Zero ! --- Increment
@@ -203,7 +252,13 @@ CONTAINS
         CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
 
-        ! --- Call Poseidon here? ---
+        IF( SolveGravity )THEN
+
+          CALL ComputeSourceTerms_Poseidon( G, U_SSPRK, U_Poseidon )
+
+          CALL ComputeGravity &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
+        END IF
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -230,7 +285,14 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
-    ! --- Call Poseidon here? ---
+    IF( SolveGravity )THEN
+
+      CALL ComputeSourceTerms_Poseidon( G, U_SSPRK, U_Poseidon )
+
+      CALL ComputeGravity &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
+
+    END IF
 
     CALL TimersStop_Euler( Timer_Euler_UpdateFluid )
 
@@ -265,6 +327,66 @@ CONTAINS
     END DO
 
   END SUBROUTINE AddIncrement_Fluid
+
+
+  SUBROUTINE ComputeSourceTerms_Poseidon( G, U, U_Poseidon )
+
+    REAL(DP), INTENT(in)  :: G         (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)  :: U         (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out) :: U_Poseidon(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    REAL(DP) :: uPF(nDOFX,nPF), Pressure(nDOFX)
+    INTEGER  :: iX1, iX2, iX3
+
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      U_Poseidon(:,iX1,iX2,iX3,1) &
+        = U(:,iX1,iX2,iX3,iCF_S1) / G(:,iX1,iX2,iX3,iGF_Gm_dd_11)
+
+      U_Poseidon(:,iX1,iX2,iX3,2) &
+        = U(:,iX1,iX2,iX3,iCF_S2) / G(:,iX1,iX2,iX3,iGF_Gm_dd_22)
+
+      U_Poseidon(:,iX1,iX2,iX3,3) &
+        = U(:,iX1,iX2,iX3,iCF_S3) / G(:,iX1,iX2,iX3,iGF_Gm_dd_33)
+
+      ! --- Compute trace of stress tensor ---
+
+      CALL ComputePrimitive_Euler_Relativistic &
+             ( U  (:,iX1,iX2,iX3,iCF_D ), &
+               U  (:,iX1,iX2,iX3,iCF_S1), &
+               U  (:,iX1,iX2,iX3,iCF_S2), &
+               U  (:,iX1,iX2,iX3,iCF_S3), &
+               U  (:,iX1,iX2,iX3,iCF_E ), &
+               U  (:,iX1,iX2,iX3,iCF_Ne), &
+               uPF(:,iPF_D ), &
+               uPF(:,iPF_V1), &
+               uPF(:,iPF_V2), &
+               uPF(:,iPF_V3), &
+               uPF(:,iPF_E ), &
+               uPF(:,iPF_Ne), &
+               G  (:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G  (:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G  (:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iPF_D), uPF(:,iPF_E), uPF(:,iPF_Ne), Pressure )
+
+      U_Poseidon(:,iX1,iX2,iX3,4) &
+        = U(:,iX1,iX2,iX3,iCF_S1) * uPF(:,iPF_V1) &
+            + U(:,iX1,iX2,iX3,iCF_S2) * uPF(:,iPF_V2) &
+            + U(:,iX1,iX2,iX3,iCF_S3) * uPF(:,iPF_V3) &
+            + Three * Pressure
+
+      U_Poseidon(:,iX1,iX2,iX3,5) &
+        = U_SSPRK(:,iX1,iX2,iX3,iCF_E) + U_SSPRK(:,iX1,iX2,iX3,iCF_D)
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeSourceTerms_Poseidon
 
 
 END MODULE TimeSteppingModule_SSPRK

@@ -56,6 +56,10 @@ PROGRAM ApplicationDriver
   USE GeometryFieldsModule,                             ONLY: &
     nGF, &
     uGF
+  USE GravitySolutionModule_CFA_Poseidon,               ONLY: &
+    InitializeGravitySolver_CFA_Poseidon, &
+    FinalizeGravitySolver_CFA_Poseidon,   &
+    SolveGravity_CFA_Poseidon
   USE Euler_dgDiscretizationModule,                     ONLY: &
     ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK,                         ONLY: &
@@ -100,6 +104,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseTroubledCellIndicator
   CHARACTER(4)  :: SlopeLimiterMethod
   LOGICAL       :: UsePositivityLimiter
+  LOGICAL       :: SelfGravity
   LOGICAL       :: UseConservativeCorrection
   INTEGER       :: iCycle, iCycleD, iCycleW = 0
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
@@ -136,19 +141,21 @@ PROGRAM ApplicationDriver
 
   t = 0.0_DP
 
+  SelfGravity = .FALSE.
+
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
 !  ProgramName = 'Advection'
 !  ProgramName = 'Advection2D'
-  ProgramName = 'RiemannProblem'
+!  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
 !  ProgramName = 'RiemannProblemSpherical'
 !  ProgramName = 'SedovTaylorBlastWave'
 !  ProgramName = 'KelvinHelmholtzInstability'
 !  ProgramName = 'StandingAccretionShock'
-!  ProgramName = 'StaticTOV'
+  ProgramName = 'StaticTOV'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -357,6 +364,8 @@ PROGRAM ApplicationDriver
 
     CASE( 'StaticTOV' )
 
+       SelfGravity = .TRUE.
+
        CoordinateSystem = 'SPHERICAL'
 
        Gamma = 2.0_DP
@@ -448,8 +457,6 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  ! --- Initialize Poseidon here? ---
-
   CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = Mass )
 
@@ -504,6 +511,7 @@ PROGRAM ApplicationDriver
            rPerturbationInner_Option    = rPerturbationInner, &
            rPerturbationOuter_Option    = rPerturbationOuter )
 
+
   IF( RestartFileNumber .GE. 0 )THEN
 
     CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
@@ -531,6 +539,16 @@ PROGRAM ApplicationDriver
 
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+    IF( SelfGravity )THEN
+
+      CALL InitializeGravitySolver_CFA_Poseidon
+
+      CALL SolveGravity_CFA_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, &
+               uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+               uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+    END IF
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -594,8 +612,20 @@ PROGRAM ApplicationDriver
 
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
-    CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
+    IF( SelfGravity )THEN
+
+      CALL UpdateFluid_SSPRK &
+             ( t, dt, uGF, uCF, uDF, &
+               ComputeIncrement_Euler_DG_Explicit, &
+               SolveGravity_CFA_Poseidon )
+
+    ELSE
+
+      CALL UpdateFluid_SSPRK &
+             ( t, dt, uGF, uCF, uDF, &
+               ComputeIncrement_Euler_DG_Explicit )
+
+    END IF
 
     IF( .NOT. OPTIMIZE )THEN
 
@@ -695,7 +725,8 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeReferenceElementX_Lagrange
 
-  ! --- Finalize Poseidon here? ---
+  IF( SelfGravity ) &
+    CALL FinalizeGravitySolver_CFA_Poseidon
 
   CALL FinalizeEquationOfState
 
