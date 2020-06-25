@@ -71,6 +71,9 @@ PROGRAM ApplicationDriver
     SolarMass,   &
     Second,      &
     Millisecond, &
+    Centimeter,  &
+    Erg,         &
+    Gram,        &
     UnitsDisplay
   USE Euler_TallyModule_Relativistic_IDEAL,             ONLY: &
     InitializeTally_Euler_Relativistic_IDEAL, &
@@ -133,6 +136,9 @@ PROGRAM ApplicationDriver
                            rPerturbationInner, rPerturbationOuter
   REAL(DP)              :: Power(0:2)
 
+  ! --- Yahil Collapse ---
+  REAL(DP) :: CentralDensity, CentralPressure, CoreRadius, CollapseTime
+
   LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
   REAL(DP) :: Timer_Evolution
@@ -155,7 +161,8 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'SedovTaylorBlastWave'
 !  ProgramName = 'KelvinHelmholtzInstability'
 !  ProgramName = 'StandingAccretionShock'
-  ProgramName = 'StaticTOV'
+!  ProgramName = 'StaticTOV'
+  ProgramName = 'YahilCollapse'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -382,6 +389,31 @@ PROGRAM ApplicationDriver
 
       ActivateUnits = .TRUE.
 
+    CASE( 'YahilCollapse' )
+
+       SelfGravity = .TRUE.
+
+       CoordinateSystem = 'SPHERICAL'
+
+       Gamma = 1.30_DP
+
+       CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
+       CentralPressure = 6.0e27_DP * Erg / Centimeter**3
+       CoreRadius      = 9500.0_DP  * Kilometer
+       CollapseTime    = 1.50e2_DP * Millisecond
+
+       nX = [ 1024, 1, 1 ]
+       xL = [ Zero      , Zero, Zero  ]
+       xR = [ CoreRadius,  Pi , TwoPi ]
+
+       bcX = [ 30, 0, 0 ]
+
+       t_end = CollapseTime - 0.5_DP * Millisecond
+
+      WriteGF = .TRUE.
+
+      ActivateUnits = .TRUE.
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -396,6 +428,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  KelvinHelmholtzInstability'
       WRITE(*,'(A)')     '  StandingAccretionShock'
       WRITE(*,'(A)')     '  StaticTOV'
+      WRITE(*,'(A)')     '  YahilCollapse'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
@@ -509,8 +542,11 @@ PROGRAM ApplicationDriver
            PerturbationOrder_Option     = PerturbationOrder, &
            PerturbationAmplitude_Option = PerturbationAmplitude, &
            rPerturbationInner_Option    = rPerturbationInner, &
-           rPerturbationOuter_Option    = rPerturbationOuter )
-
+           rPerturbationOuter_Option    = rPerturbationOuter, &
+           CentralDensity_Option        = CentralDensity, &
+           CentralPressure_Option       = CentralPressure, &
+           CoreRadius_Option            = CoreRadius, &
+           CollapseTime_Option          = CollapseTime )
 
   IF( RestartFileNumber .GE. 0 )THEN
 

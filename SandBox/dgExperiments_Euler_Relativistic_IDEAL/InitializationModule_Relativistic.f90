@@ -77,6 +77,7 @@ MODULE InitializationModule_Relativistic
     Gram,                  &
     Centimeter,            &
     Erg,                   &
+    Millisecond,           &
     Second,                &
     PlanckConstant,        &
     AtomicMassUnit
@@ -115,7 +116,9 @@ CONTAINS
                  AccretionRate_Option, MachNumber_Option, &
                  ApplyPerturbation_Option, PerturbationOrder_Option, &
                  PerturbationAmplitude_Option, &
-                 rPerturbationInner_Option, rPerturbationOuter_Option )
+                 rPerturbationInner_Option, rPerturbationOuter_Option, &
+                 CentralDensity_Option, CentralPressure_Option, &
+                 CoreRadius_Option, CollapseTime_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
@@ -130,6 +133,10 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: PerturbationAmplitude_Option
     REAL(DP),         INTENT(in), OPTIONAL :: rPerturbationInner_Option
     REAL(DP),         INTENT(in), OPTIONAL :: rPerturbationOuter_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: CentralDensity_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: CentralPressure_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: CoreRadius_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: CollapseTime_Option
 
     CHARACTER(LEN=64) :: AdvectionProfile = 'SineWave'
     CHARACTER(LEN=64) :: RiemannProblemName = 'Sod'
@@ -148,6 +155,12 @@ CONTAINS
     REAL(DP) :: PerturbationAmplitude = 0.0_DP
     REAL(DP) :: rPerturbationInner    = 0.0_DP
     REAL(DP) :: rPerturbationOuter    = 0.0_DP
+
+    ! --- Yahil Collapse ---
+    REAL(DP) :: CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
+    REAL(DP) :: CentralPressure = 6.0e27_DP * Erg  / Centimeter**3
+    REAL(DP) :: CoreRadius      = 1.0e5_DP  * Kilometer
+    REAL(DP) :: CollapseTime    = 1.50e2_DP * Millisecond
 
     IF( PRESENT( AdvectionProfile_Option ) ) &
       AdvectionProfile = TRIM( AdvectionProfile_Option )
@@ -178,6 +191,15 @@ CONTAINS
       rPerturbationInner = rPerturbationInner_Option
     IF( PRESENT( rPerturbationOuter_Option ) ) &
       rPerturbationOuter = rPerturbationOuter_Option
+
+    IF( PRESENT( CentralDensity_Option ) ) &
+      CentralDensity = CentralDensity_Option
+    IF( PRESENT( CentralPressure_Option ) ) &
+      CentralPressure = CentralPressure_Option
+    IF( PRESENT( CoreRadius_Option ) ) &
+      CoreRadius = CoreRadius_Option
+    IF( PRESENT( CollapseTime_Option ) ) &
+      CollapseTime = CollapseTime_Option
 
     WRITE(*,*)
     WRITE(*,'(A,A)') '    INFO: ', TRIM( ProgramName )
@@ -234,6 +256,11 @@ CONTAINS
       CASE( 'StaticTOV' )
 
          CALL InitializeFields_StaticTOV
+
+      CASE( 'YahilCollapse' )
+
+         CALL InitializeFields_YahilCollapse &
+                ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
 
       CASE DEFAULT
 
@@ -1856,6 +1883,323 @@ CONTAINS
     DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, PressureArr )
 
   END SUBROUTINE InitializeFields_StaticTOV
+
+
+  SUBROUTINE InitializeFields_YahilCollapse &
+    ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
+
+    REAL(DP), INTENT(in) :: CentralDensity
+    REAL(DP), INTENT(in) :: CentralPressure
+    REAL(DP), INTENT(in) :: CoreRadius
+    REAL(DP), INTENT(in) :: CollapseTime
+
+    CHARACTER(LEN=64) :: FileName
+    INTEGER           :: nLines
+
+    LOGICAL               :: InitializeFromFile
+    INTEGER               :: iX1, iX2, iX3, iNodeX, iNodeX1, iX_L
+    REAL(DP)              :: K, C_X, C_D, C_V, C_M, R, XX
+    REAL(DP), ALLOCATABLE :: X(:), D(:), V(:), M(:)
+
+    InitializeFromFile = .TRUE.
+
+    K = CentralPressure / CentralDensity**( Gamma_IDEAL )
+
+    WRITE(*,*)
+    WRITE(*,'(6x,A,L)') &
+      'InitializeFromFile:  ', &
+      InitializeFromFile
+    WRITE(*,*)
+    WRITE(*,'(6x,A,F5.3)') &
+      'Adiabatic Gamma:     ', &
+      Gamma_IDEAL
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Central Density:     ', &
+      CentralDensity / ( Gram / Centimeter**3  ), ' g/cm^3'
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Central Pressure:    ', &
+      CentralPressure / ( Erg / Centimeter**3  ), ' erg/cm^3'
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Polytropic Constant: ', &
+      K / ( Erg / Centimeter**3 &
+              / ( Gram / Centimeter**3  )**( Gamma_IDEAL ) ), &
+      ' ( erg/cm^3 ) / ( g/cm^3 )^( Gamma )'
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Core Radius:         ', &
+      CoreRadius / Kilometer, ' km'
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Collapse Time:       ', &
+      CollapseTime / Millisecond, ' ms'
+
+    C_X = K**( -Half ) &
+            * GravitationalConstant**( ( Gamma_IDEAL - One ) / Two ) &
+            * CollapseTime**( Gamma_IDEAL - Two )
+    C_D = GravitationalConstant**( -1 ) * CollapseTime**( -2 )
+    C_V = K**( Half ) &
+            * GravitationalConstant**( ( One - Gamma_IDEAL ) / Two ) &
+            * CollapseTime**( One - Gamma_IDEAL )
+    C_M = K**( Three / Two ) &
+            * GravitationalConstant**( ( One - Three * Gamma_IDEAL ) / Two ) &
+            * CollapseTime**( Four - Three * Gamma_IDEAL )
+
+    IF( InitializeFromFile )THEN
+
+      FileName = 'YahilHomologousCollapse_Gm_130.dat'
+
+      ! --- https://stackoverflow.com/questions/30692424/
+      !     how-to-read-number-of-lines-in-fortran-90-from-a-text-file
+      nLines = 0
+      OPEN(1,FILE=TRIM(FileName))
+      READ(1,*)
+      DO
+        READ(1,*,END=10)
+        nLines = nLines + 1
+      END DO
+      10 CLOSE(1)
+
+      ALLOCATE( X(nLines) )
+      ALLOCATE( D(nLines) )
+      ALLOCATE( V(nLines) )
+      ALLOCATE( M(nLines) )
+
+      OPEN(1,FILE=TRIM(FileName))
+      READ(1,*)
+
+      DO iX1 = 1, nLines
+
+        READ(1,*) X(iX1), D(iX1), V(iX1), M(iX1)
+
+      END DO
+
+      CLOSE(1)
+
+      WRITE(*,'(6x,A,ES10.3E3,A)') &
+        'Mass:                ', &
+        M(nLines) * C_M / SolarMass, ' Msun'
+      WRITE(*,*)
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E1(1)
+
+       DO iNodeX = 1, nDOFX
+
+         iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+         R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+         XX = C_X * ( R / Centimeter )
+
+         iX_L = Locate( XX, X, nLines )
+
+         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+           = C_D * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                         D(iX_L), D(iX_L+1) )
+
+         uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+           = C_V * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                         V(iX_L), V(iX_L+1) )
+
+         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+
+         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+
+         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
+           = K * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
+               / ( Gamma_IDEAL - One )
+
+       END DO
+
+        CALL ComputePressureFromPrimitive_IDEAL &
+               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+                 uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
+
+        CALL ComputeConserved_Euler_Relativistic &
+               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                 uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                 uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uAF(:,iX1,iX2,iX3,iAF_P) )
+
+      END DO
+      END DO
+      END DO
+
+      DEALLOCATE( M )
+      DEALLOCATE( V )
+      DEALLOCATE( D )
+      DEALLOCATE( X )
+
+    ELSE
+    END IF
+
+  END SUBROUTINE InitializeFields_YahilCollapse
+
+!!$  SUBROUTINE InitializeFields_YahilCollapse &
+!!$    ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
+!!$
+!!$    REAL(DP), INTENT(in) :: CentralDensity
+!!$    REAL(DP), INTENT(in) :: CentralPressure
+!!$    REAL(DP), INTENT(in) :: CoreRadius
+!!$    REAL(DP), INTENT(in) :: CollapseTime
+!!$
+!!$    INTEGER               :: N
+!!$    REAL(DP)              :: dr, dX, K, C_X, C_D, C_V, C_M, dD
+!!$    REAL(DP), ALLOCATABLE :: R(:), X(:), D(:), U(:), V(:), M(:)
+!!$
+!!$    INTEGER :: iX1
+!!$real(dp)::constraint
+!!$
+!!$    K = CentralPressure / CentralDensity**( Gamma_IDEAL )
+!!$
+!!$    WRITE(*,*)
+!!$    WRITE(*,'(6x,A,F5.3)') &
+!!$      'Adiabatic Gamma:     ', &
+!!$      Gamma_IDEAL
+!!$    WRITE(*,'(6x,A,ES10.3E3,A)') &
+!!$      'Central Density:     ', &
+!!$      CentralDensity / ( Gram / Centimeter**3  ), ' g/cm^3'
+!!$    WRITE(*,'(6x,A,ES10.3E3,A)') &
+!!$      'Central Pressure:    ', &
+!!$      CentralPressure / ( Erg / Centimeter**3  ), ' erg/cm^3'
+!!$    WRITE(*,'(6x,A,ES10.3E3,A)') &
+!!$      'Polytropic Constant: ', &
+!!$      K / ( Erg / Centimeter**3 &
+!!$              / ( Gram / Centimeter**3  )**( Gamma_IDEAL ) ), &
+!!$      ' ( erg/cm^3 ) / ( g/cm^3 )^( Gamma )'
+!!$    WRITE(*,'(6x,A,ES10.3E3,A)') &
+!!$      'Core Radius:         ', &
+!!$      CoreRadius / Kilometer, ' km'
+!!$    WRITE(*,'(6x,A,ES10.3E3,A)') &
+!!$      'Collapse Time:       ', &
+!!$      CollapseTime / Millisecond, ' ms'
+!!$    WRITE(*,*)
+!!$
+!!$    dr = 1.0e0_DP * Kilometer
+!!$    N = CoreRadius / dr
+!!$
+!!$    C_X = K**( -Half ) &
+!!$            * GravitationalConstant**( ( Gamma_IDEAL - One ) / Two ) &
+!!$            * CollapseTime**( Gamma_IDEAL - Two )
+!!$    C_D = GravitationalConstant**( -1 ) * CollapseTime**( -2 )
+!!$    C_V = K**( Half ) &
+!!$            * GravitationalConstant**( ( One - Gamma_IDEAL ) / Two ) &
+!!$            * CollapseTime**( One - Gamma_IDEAL )
+!!$    C_M = K**( Three / Two ) &
+!!$            * GravitationalConstant**( ( One - Three * Gamma_IDEAL ) / Two ) &
+!!$            * CollapseTime**( Four - Three * Gamma_IDEAL )
+!!$
+!!$    dX = C_X * dr
+!!$
+!!$    ALLOCATE( R(N) )
+!!$    ALLOCATE( X(N) )
+!!$    ALLOCATE( D(N) )
+!!$    ALLOCATE( U(N) )
+!!$    ALLOCATE( V(N) )
+!!$    ALLOCATE( M(N) )
+!!$
+!!$    R(1) = SqrtTiny * Kilometer
+!!$    X(1) = C_X * R(1)
+!!$    D(1) = CentralDensity / C_D
+!!$    U(1) = Zero!-( Gamma_IDEAL - Two ) * X(1)
+!!$    M(1) = Zero
+!!$    DO iX1 = 2, N
+!!$
+!!$      IF( MOD( iX1, 100 ) .EQ. 0 )THEN
+!!$
+!!$        WRITE(*,'(F4.2)') DBLE(iX1) / DBLE(N)
+!!$
+!!$      END IF
+!!$
+!!$      X(iX1) = X(iX1-1) + dX
+!!$
+!!$      dD     = dDdX( X(iX1-1), D(iX1-1), U(iX1-1), M(iX1-1) )
+!!$
+!!$      D(iX1) = D(iX1-1) + dX * dD
+!!$
+!!$      U(iX1) = U(iX1-1) + dX * dUdX( X(iX1-1), D(iX1-1), U(iX1-1), dD )
+!!$
+!!$      CALL IntegrateM( X(1:iX1), dX, D(1:iX1), M(iX1) )
+!!$
+!!$constraint = FourPi * X(iX1)**2 * D(iX1) * ABS( U(iX1) ) &
+!!$               / ( ( Four - Three * Gamma_IDEAL ) * M(iX1) ) - One
+!!$
+!!$if(X(iX1).gt.1000.0d0)stop!!$if(abs(constraint).gt.1.0e-10_DP)then
+!!$print*, 'X: ', X(iX1)
+!!$print*, 'Radius: ', X(iX1) / C_X / Kilometer, ' km'
+!!$print*, 'Mass:   ', C_M * M(iX1) / SolarMass, ' Msun'
+!!$print*,'Constraint: ', Constraint
+!!$print*
+!!$!!$stop
+!!$!!$endif
+!!$
+!!$    END DO
+!!$
+!!$    DEALLOCATE( M )
+!!$    DEALLOCATE( V )
+!!$    DEALLOCATE( U )
+!!$    DEALLOCATE( D )
+!!$    DEALLOCATE( X )
+!!$    DEALLOCATE( R )
+!!$
+!!$stop
+!!$
+!!$  END SUBROUTINE InitializeFields_YahilCollapse
+
+
+  ! --- Auxiliary functions for Yahil collapse problem ---
+
+  REAL(DP) FUNCTION dDdX( X, D, U, M )
+
+    REAL(DP), INTENT(in) :: X, D, U, M
+
+    dDdX = ( -M / X**2 + Two * U**2 / X + ( Gamma_IDEAL - One ) * U &
+             + ( Gamma_IDEAL - One ) * ( Two - Gamma_IDEAL ) * X ) &
+             / ( Gamma_IDEAL * D**( Gamma_IDEAL - One ) - U**2 ) / D
+
+  END FUNCTION dDdX
+
+
+  REAL(DP) FUNCTION dUdX( X, D, U, dDdX )
+
+    REAL(DP), INTENT(in) :: X, D, U, dDdX
+
+    dUdX = Four - Three * Gamma_IDEAL - Two * U / X - U / D * dDdX
+
+  END FUNCTION dUdX
+
+
+  SUBROUTINE IntegrateM( X, dX, D, M )
+
+    REAL(DP), INTENT(in)  :: X(:), dX, D(:)
+    REAL(DP), INTENT(out) :: M
+
+    INTEGER :: iX1, N
+
+    N = SIZE( D )
+
+    M = Half * ( D(1) * X(1)**2 + D(N) * X(N)**2 )
+
+    IF( N .GT. 2 )THEN
+
+      DO iX1 = 2, N-1
+
+        M = M + D(iX1) * X(iX1)**2
+
+      END DO
+
+    END IF
+
+    M = FourPi * dX * M
+
+  END SUBROUTINE IntegrateM
+
+
+  ! --- End of auxiliary functions for Yahil collapse problem ---
 
 
   ! --- Auxiliary utilities for TOV problem ---
