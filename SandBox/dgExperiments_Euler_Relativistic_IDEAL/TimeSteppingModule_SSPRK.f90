@@ -209,9 +209,9 @@ CONTAINS
       ComputeGravity
 
     ! --- S^1, S^2, S^3, S, E ---
-    REAL(DP) :: U_Poseidon(nDOFX,iX_B1(1):iX_E1(1), &
-                                 iX_B1(2):iX_E1(2), &
-                                 iX_B1(3):iX_E1(3),5)
+    REAL(DP) :: U_Poseidon(nDOFX,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3),5)
 
     LOGICAL :: SolveGravity
     LOGICAL :: DEBUG = .FALSE.
@@ -258,6 +258,7 @@ CONTAINS
 
           CALL ComputeGravity &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_Poseidon )
+
         END IF
 
         CALL ComputeIncrement_Fluid &
@@ -333,14 +334,14 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: G         (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)  :: U         (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out) :: U_Poseidon(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out) :: U_Poseidon(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     REAL(DP) :: uPF(nDOFX,nPF), Pressure(nDOFX)
     INTEGER  :: iX1, iX2, iX3
 
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
       U_Poseidon(:,iX1,iX2,iX3,1) &
         = U(:,iX1,iX2,iX3,iCF_S1) / G(:,iX1,iX2,iX3,iGF_Gm_dd_11)
@@ -380,7 +381,7 @@ CONTAINS
             + Three * Pressure
 
       U_Poseidon(:,iX1,iX2,iX3,5) &
-        = U_SSPRK(:,iX1,iX2,iX3,iCF_E) + U_SSPRK(:,iX1,iX2,iX3,iCF_D)
+        = U(:,iX1,iX2,iX3,iCF_E) + U(:,iX1,iX2,iX3,iCF_D)
 
     END DO
     END DO
