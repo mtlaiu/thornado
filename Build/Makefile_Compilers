@@ -217,6 +217,7 @@ INCLUDE_POSEIDON_mac_gnu       =
 INCLUDE_POSEIDON_jrober        = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON_sn1987b       = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON_kristopher    = -I$(POSEIDON_DIR)/Obj
+INCLUDE_POSEIDON_sjdunham      = -I$(POSEIDON_DIR)/Obj
 INCLUDE_POSEIDON               = $(INCLUDE_POSEIDON_$(MACHINE))
 
 INCLUDE_LAPACK_ranchu          = -I/usr/include
@@ -258,8 +259,8 @@ INCLUDE_MAGMA_summit_pgi       = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA_summit_xl        = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_MAGMA                  = $(INCLUDE_MAGMA_$(MACHINE))
 
-
 INCLUDE_PETSC_jrober           = -I$(PETSC_DIR)/include -I$(PETSC_ARCH)/include -L$(PETSC_DIR)/lib -L$(PETSC_ARCH)/lib -lpetsc
+INCLUDE_PETSC_sjdunham         = -I$(PETSC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include
 INCLUDE_PETSC                  = $(INCLUDE_PETSC_$(MACHINE))
 
 
@@ -300,6 +301,7 @@ LIBRARIES_POSEIDON_mac_gnu     =
 LIBRARIES_POSEIDON_jrober      = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON_sn1987b     = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_POSEIDON_kristopher  = $(POSEIDON_DIR)/Obj/poseidon.a
+LIBRARIES_POSEIDON_sjdunham    = $(POSEIDON_DIR)/Obj/Poseidon.a
 LIBRARIES_POSEIDON             = $(LIBRARIES_POSEIDON_$(MACHINE))
 
 LIBRARIES_LAPACK_ranchu        = -L/usr/lib -llapack -lblas
@@ -350,6 +352,7 @@ LIBRARIES_MAGMA_summit_xl      = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_MAGMA                = $(LIBRARIES_MAGMA_$(MACHINE))
 
 LIBRARIES_PETSC_jrober         = -I$(PETSC_DIR)/include -I$(PETSC_ARCH)/include -L$(PETSC_DIR)/lib -L$(PETSC_ARCH)/lib -lpetsc
+LIBRARIES_PETSC_sjdunham       = -L$(PETSC_DIR)/lib -L$(PETSC_DIR)/$(PETSC_ARCH)/lib -lpetsc
 LIBRARIES_PETSC                = $(LIBRARIES_PETSC_$(MACHINE))
 
 

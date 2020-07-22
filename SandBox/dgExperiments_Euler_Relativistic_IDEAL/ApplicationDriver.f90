@@ -65,7 +65,8 @@ PROGRAM ApplicationDriver
   USE TimeSteppingModule_SSPRK,                         ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK,   &
-    UpdateFluid_SSPRK
+    UpdateFluid_SSPRK,     &
+    ComputeSourceTerms_Poseidon
   USE UnitsModule,                                      ONLY: &
     Kilometer,   &
     SolarMass,   &
@@ -120,7 +121,6 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: Mass = Zero
-
   REAL(DP)      :: ZoomX(3)
 
   ! --- Sedov--Taylor blast wave ---
@@ -145,12 +145,15 @@ PROGRAM ApplicationDriver
   LOGICAL  :: ActivateUnits = .FALSE.
   REAL(DP) :: Timer_Evolution
 
+  REAL(DP), ALLOCATABLE :: U_Poseidon(:,:,:,:,:)
+
   RestartFileNumber = -1
 
   t = 0.0_DP
 
   SelfGravity = .FALSE.
-  ZoomX = 1.0_DP
+  ZoomX       = 1.0_DP
+
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
@@ -401,12 +404,12 @@ PROGRAM ApplicationDriver
 
        CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
        CentralPressure = 6.0e27_DP * Erg / Centimeter**3
-       CoreRadius      = 100000.0_DP  * Kilometer
+       CoreRadius      = 1.0e5_DP  * Kilometer
        CollapseTime    = 1.50e2_DP * Millisecond
 
-       nX = [ 256, 1, 1 ]
-       xL = [ Zero      , Zero, Zero  ]
-       xR = [ CoreRadius,  Pi , TwoPi ]
+       nX    = [ 256                 , 1     , 1      ]
+       xL    = [ Zero                , Zero  , Zero   ]
+       xR    = [ CoreRadius          ,  Pi   , TwoPi  ]
        ZoomX = [ 1.032034864238313_DP, 1.0_DP, 1.0_DP ]
 
        bcX = [ 30, 0, 0 ]
@@ -416,8 +419,6 @@ PROGRAM ApplicationDriver
       WriteGF = .TRUE.
 
       ActivateUnits = .TRUE.
-
-      
 
     CASE DEFAULT
 
@@ -561,9 +562,9 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  iCycleD = 10
+  iCycleD = 1
   iCycleW = 1; dt_wrt = -1.0d0
-!  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+!!$  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -585,12 +586,18 @@ PROGRAM ApplicationDriver
 
     IF( SelfGravity )THEN
 
+      ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                   iX_B0(2):iX_E0(2), &
+                                   iX_B0(3):iX_E0(3),1:5) )
+
       CALL InitializeGravitySolver_CFA_Poseidon
 
+      CALL ComputeSourceTerms_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, U_Poseidon )
+
       CALL SolveGravity_CFA_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, &
-               uGF(1:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:), &
-               uCF(1:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:) )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_Poseidon )
+
     END IF
 
     CALL WriteFieldsHDF &
@@ -601,8 +608,6 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL TimersStart_Euler( Timer_Euler_Initialize )
-
-
 
   WRITE(*,*)
   WRITE(*,'(A2,A)') '', 'Begin evolution'
@@ -625,7 +630,7 @@ PROGRAM ApplicationDriver
 !  DO WHILE( iCycle < 3)
 !    PRINT*,"Modified While Loop in ApplicationDriver",iCycle   ! Added by Nick, for testing.
   DO WHILE( t .LT. t_end )
-   
+
     iCycle = iCycle + 1
 
     CALL ComputeTimeStep_Euler_Relativistic &
@@ -745,6 +750,16 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
+    IF( SelfGravity )THEN
+
+      CALL ComputeSourceTerms_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, U_Poseidon )
+
+      CALL SolveGravity_CFA_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_Poseidon )
+
+    END IF
+
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
 
@@ -772,8 +787,13 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeReferenceElementX_Lagrange
 
-  IF( SelfGravity ) &
+  IF( SelfGravity )THEN
+
+    DEALLOCATE( U_Poseidon )
+
     CALL FinalizeGravitySolver_CFA_Poseidon
+
+  END IF
 
   CALL FinalizeEquationOfState
 

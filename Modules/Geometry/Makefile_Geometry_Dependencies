@@ -49,10 +49,11 @@ GravitySolutionModule_Newtonian_Poseidon.o: \
 
 GravitySolutionModule_CFA_Poseidon.o: \
   KindModule.o \
-  UnitsModule.o \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
-  ReferenceElementModuleX_Lagrange.o \
+  UtilitiesModule.o \
   MeshModule.o \
+  GeometryComputationModule.o \
   GeometryFieldsModule.o \
+  UnitsModule.o \
   GravitySolutionModule_CFA_Poseidon.F90

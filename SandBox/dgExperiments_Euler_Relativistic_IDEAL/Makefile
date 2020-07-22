@@ -16,23 +16,23 @@ ApplicationDriver: \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
-ComputePrimitiveTest: \
-	$(thornado) \
-	ComputePrimitiveTest.o
-	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
-	$(thornado) \
-	ComputePrimitiveTest.o \
-	$(LIBRARIES)
-
-SlopeLimiterDiagnostics: \
-	$(thornado) \
-	InitializationModule_Relativistic.o \
-	SlopeLimiterDiagnostics.o
-	$(FLINKER) $(FLAGS) -o SlopeLimiterDiagnostics_$(MACHINE) \
-	$(thornado) \
-	InitializationModule_Relativistic.o \
-	SlopeLimiterDiagnostics.o \
-	$(LIBRARIES)
+# ComputePrimitiveTest: \
+# 	$(thornado) \
+# 	ComputePrimitiveTest.o
+# 	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
+# 	$(thornado) \
+# 	ComputePrimitiveTest.o \
+# 	$(LIBRARIES)
+#
+# SlopeLimiterDiagnostics: \
+# 	$(thornado) \
+# 	InitializationModule_Relativistic.o \
+# 	SlopeLimiterDiagnostics.o
+# 	$(FLINKER) $(FLAGS) -o SlopeLimiterDiagnostics_$(MACHINE) \
+# 	$(thornado) \
+# 	InitializationModule_Relativistic.o \
+# 	SlopeLimiterDiagnostics.o \
+# 	$(LIBRARIES)
 
 clean:
 	rm -f *.o *.mod *.ld

@@ -1949,29 +1949,29 @@ CONTAINS
       ! --- https://stackoverflow.com/questions/30692424/
       !     how-to-read-number-of-lines-in-fortran-90-from-a-text-file
       nLines = 0
-      OPEN(1,FILE=TRIM(FileName))
-      READ(1,*)
+      OPEN(100,FILE=TRIM(FileName))
+      READ(100,*)
       DO
-        READ(1,*,END=10)
+        READ(100,*,END=10)
         nLines = nLines + 1
       END DO
-      10 CLOSE(1)
+      10 CLOSE(100)
 
       ALLOCATE( X(nLines) )
       ALLOCATE( D(nLines) )
       ALLOCATE( V(nLines) )
       ALLOCATE( M(nLines) )
 
-      OPEN(1,FILE=TRIM(FileName))
-      READ(1,*)
+      OPEN(100,FILE=TRIM(FileName))
+      READ(100,*)
 
       DO iX1 = 1, nLines
 
-        READ(1,*) X(iX1), D(iX1), V(iX1), M(iX1)
+        READ(100,*) X(iX1), D(iX1), V(iX1), M(iX1)
 
       END DO
 
-      CLOSE(1)
+      CLOSE(100)
 
       WRITE(*,'(6x,A,ES10.3E3,A)') &
         'Mass:                ', &
@@ -1987,9 +1987,7 @@ CONTAINS
          iNodeX1 = NodeNumberTableX(1,iNodeX)
 
          R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-!         XX = C_X * ( R / Centimeter )
-         XX = C_X * R 
-
+         XX = C_X * R
 
          iX_L = Locate( XX, X, nLines )
 
