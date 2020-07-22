@@ -1987,7 +1987,9 @@ CONTAINS
          iNodeX1 = NodeNumberTableX(1,iNodeX)
 
          R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-         XX = C_X * ( R / Centimeter )
+!         XX = C_X * ( R / Centimeter )
+         XX = C_X * R 
+
 
          iX_L = Locate( XX, X, nLines )
 

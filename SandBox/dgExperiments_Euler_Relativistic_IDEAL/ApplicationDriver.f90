@@ -121,6 +121,8 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: Mass = Zero
 
+  REAL(DP)      :: ZoomX(3)
+
   ! --- Sedov--Taylor blast wave ---
   REAL(DP) :: Eblast
   INTEGER  :: nDetCells
@@ -148,7 +150,7 @@ PROGRAM ApplicationDriver
   t = 0.0_DP
 
   SelfGravity = .FALSE.
-
+  ZoomX = 1.0_DP
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
@@ -399,12 +401,13 @@ PROGRAM ApplicationDriver
 
        CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
        CentralPressure = 6.0e27_DP * Erg / Centimeter**3
-       CoreRadius      = 9500.0_DP  * Kilometer
+       CoreRadius      = 100000.0_DP  * Kilometer
        CollapseTime    = 1.50e2_DP * Millisecond
 
-       nX = [ 1024, 1, 1 ]
+       nX = [ 256, 1, 1 ]
        xL = [ Zero      , Zero, Zero  ]
        xR = [ CoreRadius,  Pi , TwoPi ]
+       ZoomX = [ 1.032034864238313_DP, 1.0_DP, 1.0_DP ]
 
        bcX = [ 30, 0, 0 ]
 
@@ -413,6 +416,8 @@ PROGRAM ApplicationDriver
       WriteGF = .TRUE.
 
       ActivateUnits = .TRUE.
+
+      
 
     CASE DEFAULT
 
@@ -434,7 +439,7 @@ PROGRAM ApplicationDriver
 
   END SELECT
 
-  nNodes = 3
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
@@ -477,6 +482,8 @@ PROGRAM ApplicationDriver
              = xL, &
            xR_Option &
              = xR, &
+           ZoomX_Option &
+             = ZoomX, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -555,8 +562,8 @@ PROGRAM ApplicationDriver
   END IF
 
   iCycleD = 10
-!!$  iCycleW = 10; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+  iCycleW = 1; dt_wrt = -1.0d0
+!  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -582,8 +589,8 @@ PROGRAM ApplicationDriver
 
       CALL SolveGravity_CFA_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, &
-               uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-               uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) )
+               uGF(1:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:), &
+               uCF(1:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:) )
     END IF
 
     CALL WriteFieldsHDF &
@@ -594,6 +601,8 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL TimersStart_Euler( Timer_Euler_Initialize )
+
+
 
   WRITE(*,*)
   WRITE(*,'(A2,A)') '', 'Begin evolution'
@@ -613,8 +622,10 @@ PROGRAM ApplicationDriver
 
   iCycle = 0
   Timer_Evolution = MPI_WTIME()
+!  DO WHILE( iCycle < 3)
+!    PRINT*,"Modified While Loop in ApplicationDriver",iCycle   ! Added by Nick, for testing.
   DO WHILE( t .LT. t_end )
-
+   
     iCycle = iCycle + 1
 
     CALL ComputeTimeStep_Euler_Relativistic &
