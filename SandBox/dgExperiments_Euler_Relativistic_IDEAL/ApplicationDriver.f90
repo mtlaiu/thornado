@@ -65,8 +65,7 @@ PROGRAM ApplicationDriver
   USE TimeSteppingModule_SSPRK,                         ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK,   &
-    UpdateFluid_SSPRK,     &
-    ComputeSourceTerms_Poseidon
+    UpdateFluid_SSPRK
   USE UnitsModule,                                      ONLY: &
     Kilometer,   &
     SolarMass,   &
@@ -91,6 +90,8 @@ PROGRAM ApplicationDriver
     Timer_Euler_Finalize
   USE AccretionShockDiagnosticsModule, ONLY: &
     ComputeAccretionShockDiagnostics
+  USE Poseidon_UtilitiesModule, ONLY: &
+    ComputeSourceTerms_Poseidon
 
   IMPLICIT NONE
 
