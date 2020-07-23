@@ -1981,10 +1981,6 @@ CONTAINS
     K = CentralPressure / CentralDensity**( Gamma_IDEAL )
 
     WRITE(*,*)
-    WRITE(*,'(6x,A,L)') &
-      'InitializeFromFile:  ', &
-      InitializeFromFile
-    WRITE(*,*)
     WRITE(*,'(6x,A,F5.3)') &
       'Adiabatic Gamma:     ', &
       Gamma_IDEAL

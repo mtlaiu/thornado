@@ -399,14 +399,14 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'SPHERICAL'
 
-      Gamma = 1.30_DP
-      t_end = CollapseTime - 0.5_DP * Millisecond
-      bcX = [ 30, 0, 0 ]
-
       CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
       CentralPressure = 6.0e27_DP * Erg / Centimeter**3
       CoreRadius      = 1.0e4_DP  * Kilometer
       CollapseTime    = 1.50e2_DP * Millisecond
+
+      Gamma = 1.30_DP
+      t_end = CollapseTime - 0.5_DP * Millisecond
+      bcX = [ 30, 0, 0 ]
 
       nX    = [ 256                 , 1     , 1      ]
       swX   = [ 1                   , 0     , 0      ]
