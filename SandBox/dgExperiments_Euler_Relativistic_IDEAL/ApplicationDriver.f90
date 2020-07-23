@@ -401,7 +401,7 @@ PROGRAM ApplicationDriver
 
       CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
       CentralPressure = 6.0e27_DP * Erg / Centimeter**3
-      CoreRadius      = 1.0e4_DP  * Kilometer
+      CoreRadius      = 1.0e5_DP  * Kilometer
       CollapseTime    = 1.50e2_DP * Millisecond
 
       Gamma = 1.30_DP
@@ -485,6 +485,8 @@ PROGRAM ApplicationDriver
              = xL, &
            xR_Option &
              = xR, &
+           ZoomX_Option &
+             = ZoomX, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -574,9 +576,9 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  iCycleD = 10
-!!$  iCycleW = 10; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+  iCycleD = 1
+  iCycleW = 1; dt_wrt = -1.0d0
+!!$  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
