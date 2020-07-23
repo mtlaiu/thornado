@@ -31,6 +31,7 @@ MODULE ReferenceElementModuleX_Lagrange
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: dLXdX2_q
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: dLXdX3_q
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: LX_L2G
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: LX_G2L
 
   PUBLIC :: InitializeReferenceElementX_Lagrange
   PUBLIC :: FinalizeReferenceElementX_Lagrange
@@ -166,6 +167,7 @@ CONTAINS
     END DO
 
     ALLOCATE( LX_L2G(nDOFX,nDOFX) )
+    ALLOCATE( LX_G2L(nDOFX,nDOFX) )
 
     DO jNodeX = 1, nDOFX
 
@@ -183,6 +185,11 @@ CONTAINS
           = LagrangeP  ( NodesX1(iNodeX1), jNodeX1, NodesLX1, nNodesX(1) ) &
             * LagrangeP( NodesX2(iNodeX2), jNodeX2, NodesLX2, nNodesX(2) ) &
             * LagrangeP( NodesX3(iNodeX3), jNodeX3, NodesLX3, nNodesX(3) )
+
+        LX_G2L(iNodeX,jNodeX) &
+          = LagrangeP  ( NodesLX1(iNodeX1), jNodeX1, NodesX1, nNodesX(1) ) &
+            * LagrangeP( NodesLX2(iNodeX2), jNodeX2, NodesX2, nNodesX(2) ) &
+            * LagrangeP( NodesLX3(iNodeX3), jNodeX3, NodesX3, nNodesX(3) )
 
       END DO
 
@@ -227,6 +234,7 @@ CONTAINS
     DEALLOCATE( dLXdX2_q )
     DEALLOCATE( dLXdX3_q )
     DEALLOCATE( LX_L2G )
+    DEALLOCATE( LX_G2L )
 
   END SUBROUTINE FinalizeReferenceElementX_Lagrange
 
