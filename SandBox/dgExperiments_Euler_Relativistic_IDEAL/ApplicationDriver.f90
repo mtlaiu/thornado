@@ -440,7 +440,7 @@ PROGRAM ApplicationDriver
 
   END SELECT
 
-  nNodes = 1
+  nNodes = 2
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
@@ -498,8 +498,20 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL ComputeGeometryX &
+  IF( SelfGravity )THEN
+
+    ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3),1:5) )
+
+    CALL InitializeGravitySolver_CFA_Poseidon
+
+  ELSE
+
+    CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, Mass_Option = Mass )
+
+  END IF
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
@@ -562,9 +574,9 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  iCycleD = 1
-  iCycleW = 1; dt_wrt = -1.0d0
-!!$  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+  iCycleD = 10
+!!$  iCycleW = 1; dt_wrt = -1.0d0
+  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -575,6 +587,16 @@ PROGRAM ApplicationDriver
   CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
+  IF( SelfGravity )THEN
+
+    CALL ComputeSourceTerms_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, U_Poseidon )
+
+    CALL SolveGravity_CFA_Poseidon &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_Poseidon )
+
+  END IF
+
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
   IF( .NOT. OPTIMIZE .AND. RestartFileNumber .LT. 0 )THEN
@@ -583,22 +605,6 @@ PROGRAM ApplicationDriver
 
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-    IF( SelfGravity )THEN
-
-      ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
-                                   iX_B0(2):iX_E0(2), &
-                                   iX_B0(3):iX_E0(3),1:5) )
-
-      CALL InitializeGravitySolver_CFA_Poseidon
-
-      CALL ComputeSourceTerms_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, U_Poseidon )
-
-      CALL SolveGravity_CFA_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_Poseidon )
-
-    END IF
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
