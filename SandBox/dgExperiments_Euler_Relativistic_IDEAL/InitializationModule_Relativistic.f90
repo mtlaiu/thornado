@@ -97,12 +97,12 @@ MODULE InitializationModule_Relativistic
 
   REAL(DP), PARAMETER :: &
     PolytropicConstant_TOV &
-!!$      = 1.0_DP / 20.0_DP * ( 3.0_DP / Pi )**( 2.0_DP / 3.0_DP ) &
-!!$          * ( PlanckConstant / ( Erg * Second ) )**2 &
-!!$          / ( AtomicMassUnit / Gram )**( 8.0_DP / 3.0_DP ) &
-!!$          * ( Erg / Centimeter**3 ) &
-!!$          / ( Gram / Centimeter**3 )**( 5.0_DP/ 3.0_DP )
-      = 1.455e5_DP * Erg * Centimeter**3 / Gram**2
+      = 1.0_DP / 20.0_DP * ( 3.0_DP / Pi )**( 2.0_DP / 3.0_DP ) &
+          * ( PlanckConstant / ( Erg * Second ) )**2 &
+          / ( AtomicMassUnit / Gram )**( 8.0_DP / 3.0_DP ) &
+          * ( Erg / Centimeter**3 ) &
+          / ( Gram / Centimeter**3 )**( 5.0_DP/ 3.0_DP )
+!!$      = 1.455e5_DP * Erg * Centimeter**3 / Gram**2
 
 
 CONTAINS
@@ -113,7 +113,7 @@ CONTAINS
                  RiemannProblemName_Option, &
                  nDetCells_Option, Eblast_Option, &
                  MassPNS_Option, ShockRadius_Option, &
-                 AccretionRate_Option, MachNumber_Option, &
+                 AccretionRate_Option, PolytropicConstant_Option, &
                  ApplyPerturbation_Option, PerturbationOrder_Option, &
                  PerturbationAmplitude_Option, &
                  rPerturbationInner_Option, rPerturbationOuter_Option, &
@@ -127,7 +127,7 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: MassPNS_Option
     REAL(DP),         INTENT(in), OPTIONAL :: ShockRadius_Option
     REAL(DP),         INTENT(in), OPTIONAL :: AccretionRate_Option
-    REAL(DP),         INTENT(in), OPTIONAL :: MachNumber_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: PolytropicConstant_Option
     LOGICAL,          INTENT(in), OPTIONAL :: ApplyPerturbation_Option
     INTEGER,          INTENT(in), OPTIONAL :: PerturbationOrder_Option
     REAL(DP),         INTENT(in), OPTIONAL :: PerturbationAmplitude_Option
@@ -148,8 +148,11 @@ CONTAINS
     ! --- Standing Accretion Shock (Defaults) ---
     REAL(DP) :: MassPNS               = 1.4_DP   * SolarMass
     REAL(DP) :: ShockRadius           = 180.0_DP * Kilometer
-    REAL(DP) :: AccretionRate         = 0.3_DP   * SolarMass / Second
-    REAL(DP) :: MachNumber            = 10.0_DP
+    REAL(DP) :: AccretionRate         = 0.3_DP   * ( SolarMass / Second )
+    REAL(DP) :: PolytropicConstant    = 2.0e14_DP &
+                                          * ( Erg / Centimeter**3 &
+                                          / ( Gram / Centimeter**3 ) &
+                                          **( Four / Three ) ) ! Hard-coded
     LOGICAL  :: ApplyPerturbation     = .FALSE.
     INTEGER  :: PerturbationOrder     = 0
     REAL(DP) :: PerturbationAmplitude = 0.0_DP
@@ -157,8 +160,8 @@ CONTAINS
     REAL(DP) :: rPerturbationOuter    = 0.0_DP
 
     ! --- Yahil Collapse ---
-    REAL(DP) :: CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
-    REAL(DP) :: CentralPressure = 6.0e27_DP * Erg  / Centimeter**3
+    REAL(DP) :: CentralDensity  = 7.0e9_DP  * ( Gram / Centimeter**3 )
+    REAL(DP) :: CentralPressure = 6.0e27_DP * ( Erg  / Centimeter**3 )
     REAL(DP) :: CoreRadius      = 1.0e5_DP  * Kilometer
     REAL(DP) :: CollapseTime    = 1.50e2_DP * Millisecond
 
@@ -179,8 +182,8 @@ CONTAINS
       ShockRadius = ShockRadius_Option
     IF( PRESENT( AccretionRate_Option ) ) &
       AccretionRate = AccretionRate_Option
-    IF( PRESENT( MachNumber_Option ) ) &
-      MachNumber = MachNumber_Option
+    IF( PRESENT( PolytropicConstant_Option ) ) &
+      PolytropicConstant = PolytropicConstant_Option
     IF( PRESENT( ApplyPerturbation_Option ) ) &
       ApplyPerturbation = ApplyPerturbation_Option
     IF( PRESENT( PerturbationOrder_Option ) ) &
@@ -249,7 +252,7 @@ CONTAINS
       CASE( 'StandingAccretionShock' )
 
         CALL InitializeFields_StandingAccretionShock &
-               ( MassPNS, ShockRadius, AccretionRate, MachNumber, &
+               ( MassPNS, ShockRadius, AccretionRate, PolytropicConstant, &
                  ApplyPerturbation, PerturbationOrder, PerturbationAmplitude, &
                  rPerturbationInner, rPerturbationOuter )
 
@@ -595,6 +598,17 @@ CONTAINS
             uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
               = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
 
+          CASE( 'SineWaveX1X2' )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  &
+              = One + 0.1_DP * SIN( SQRT( Two ) * TwoPi * ( X1 + X2 ) )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP / SQRT( Two )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.1_DP / SQRT( Two )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
+              = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+
           CASE DEFAULT
 
             WRITE(*,*)
@@ -603,6 +617,7 @@ CONTAINS
             WRITE(*,'(A)') 'Valid choices:'
             WRITE(*,'(A)') '  SineWaveX1'
             WRITE(*,'(A)') '  SineWaveX2'
+            WRITE(*,'(A)') '  SineWaveX1X2'
             WRITE(*,*)
             WRITE(*,'(A)') 'Stopping...'
             STOP
@@ -1116,14 +1131,69 @@ CONTAINS
 
     CHARACTER(LEN=*), INTENT(in) :: RiemannProblemName
 
-    INTEGER       :: iX1, iX2, iX3
-    INTEGER       :: iNodeX, iNodeX1
-    REAL(DP)      :: X1
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1
+    REAL(DP) :: X1, XD
+
+    REAL(DP) :: LeftState(nPF), RightState(nPF)
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
-      '', 'Spherical Riemann Problem Name: ', &
+      '', 'Riemann Problem Name: ', &
         TRIM( RiemannProblemName )
+    WRITE(*,*)
+
+    SELECT CASE( TRIM( RiemannProblemName ) )
+
+      CASE( 'SphericalSod' )
+
+        XD = 1.0_DP
+
+        LeftState(iPF_D ) = 1.0_DP
+        LeftState(iPF_V1) = 0.0_DP
+        LeftState(iPF_V2) = 0.0_DP
+        LeftState(iPF_V3) = 0.0_DP
+        LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        RightState(iPF_D ) = 0.125_DP
+        RightState(iPF_V1) = 0.0_DP
+        RightState(iPF_V2) = 0.0_DP
+        RightState(iPF_V3) = 0.0_DP
+        RightState(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
+
+      CASE DEFAULT
+
+        WRITE(*,*)
+        WRITE(*,'(A,A)') &
+          'Invalid choice for RiemannProblemName: ', RiemannProblemName
+        WRITE(*,'(A)') 'Valid choices:'
+        WRITE(*,'(A)') &
+          "  'SphericalSod' - &
+          Spherical Sod's shock tube"
+        WRITE(*,'(A)') 'Stopping...'
+        STOP
+
+    END SELECT
+
+    WRITE(*,'(6x,A,F8.6)') 'Gamma_IDEAL = ', Gamma_IDEAL
+    WRITE(*,*)
+    WRITE(*,'(6x,A,F8.6)') 'XD = ', XD
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'Right State:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', RightState(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', RightState(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', RightState(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', RightState(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', RightState(iPF_E )
+    WRITE(*,*)
+    WRITE(*,'(6x,A)') 'Left State:'
+    WRITE(*,*)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_D  = ', LeftState(iPF_D )
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V1 = ', LeftState(iPF_V1)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V2 = ', LeftState(iPF_V2)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_V3 = ', LeftState(iPF_V3)
+    WRITE(*,'(8x,A,ES14.6E3)') 'PF_E  = ', LeftState(iPF_E )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1139,43 +1209,27 @@ CONTAINS
 
           CASE( 'SphericalSod' )
 
-            IF( X1 <= One )THEN
+            IF( X1 .LE. XD )THEN
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = LeftState(iPF_D )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = LeftState(iPF_V1)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = LeftState(iPF_V2)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = LeftState(iPF_V3)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = LeftState(iPF_E )
 
             ELSE
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 0.1_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = RightState(iPF_D )
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = RightState(iPF_V1)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = RightState(iPF_V2)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = RightState(iPF_V3)
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = RightState(iPF_E )
 
             END IF
 
-         CASE DEFAULT
+        END SELECT
 
-            WRITE(*,*)
-            WRITE(*,*) &
-              'Invalid choice for RiemannProblemName: ', &
-              RiemannProblemName
-            WRITE(*,*) 'Valid choices:'
-            WRITE(*,*) &
-              "'SphericalSod' - ", &
-              "Spherical Sod's shock tube"
-            STOP
-
-          END SELECT
-
-        END DO
+      END DO
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
@@ -1353,11 +1407,12 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_StandingAccretionShock &
-    ( MassPNS, ShockRadius, AccretionRate, MachNumber, &
+    ( MassPNS, ShockRadius, AccretionRate, PolytropicConstant, &
       ApplyPerturbation, PerturbationOrder, PerturbationAmplitude, &
       rPerturbationInner, rPerturbationOuter )
 
-    REAL(DP), INTENT(in) :: MassPNS, ShockRadius, AccretionRate, MachNumber
+    REAL(DP), INTENT(in) :: MassPNS, ShockRadius, &
+                            AccretionRate, PolytropicConstant
     LOGICAL,  INTENT(in) :: ApplyPerturbation
     INTEGER,  INTENT(in) :: PerturbationOrder
     REAL(DP), INTENT(in) :: PerturbationAmplitude
@@ -1366,37 +1421,72 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3, iNodeX1, iNodeX2, iNodeX3, iNodeX
     INTEGER  :: iX1_1, iX1_2, iNodeX1_1, iNodeX1_2
-    REAL(DP) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_2
-    REAL(DP) :: Alpha, Psi, V0, VSq, W
-    REAL(DP) :: X1, X2, dX1, PolytropicConstant, MassConstant
-    REAL(DP) :: D(1:nNodesX(1),iX_B1(1):iX_E1(1))
-    REAL(DP) :: V(1:nNodesX(1),iX_B1(1):iX_E1(1))
-    REAL(DP) :: P(1:nNodesX(1),iX_B1(1):iX_E1(1))
+    REAL(DP) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2, C1, C2, C3
+    REAL(DP) :: D0, V0, P0
+    REAL(DP) :: X1, X2, dX1, Ka, Kb, Mdot, W
+    REAL(DP) :: D    (1:nNodesX(1),iX_B1(1):iX_E1(1))
+    REAL(DP) :: V    (1:nNodesX(1),iX_B1(1):iX_E1(1))
+    REAL(DP) :: P    (1:nNodesX(1),iX_B1(1):iX_E1(1))
+    REAL(DP) :: Alpha(1:nNodesX(1),iX_B1(1):iX_E1(1))
+    REAL(DP) :: Psi  (1:nNodesX(1),iX_B1(1):iX_E1(1))
     LOGICAL  :: FirstPreShockElement = .FALSE.
+
+    ! --- Quantities with (1) are pre-shock, those with (2) are post-shock ---
+
+    Mdot = AccretionRate
+    Ka   = PolytropicConstant
 
     WRITE(*,*)
     WRITE(*,'(6x,A,ES9.2E3,A)') &
-      'Shock radius:   ', ShockRadius / Kilometer, ' km'
+      'Shock radius:                    ', &
+      ShockRadius / Kilometer, ' km'
     WRITE(*,'(6x,A,ES9.2E3,A)') &
-      'PNS Mass:       ', MassPNS / SolarMass, ' Msun'
+      'PNS Mass:                        ', &
+      MassPNS / SolarMass, ' Msun'
     WRITE(*,'(6x,A,ES9.2E3,A)') &
-      'Accretion Rate: ', AccretionRate / ( SolarMass / Second ), &
-      ' Msun/s'
-    WRITE(*,'(6x,A,ES9.2E3)') &
-      'Mach number:    ', MachNumber
+      'Accretion Rate:                  ', &
+      Mdot / ( SolarMass / Second ), ' Msun/s'
+    WRITE(*,'(6x,A,ES9.2E3,A)') &
+      'Polytropic Constant (pre-shock): ', &
+        Ka / ( ( Erg / Centimeter**3 ) &
+               / ( Gram / Centimeter**3 )**( Gamma_IDEAL ) ), &
+        ' erg/cm^3 / (g/cm^3)^( Gamma )'
     WRITE(*,*)
     WRITE(*,'(6x,A,L)') &
-      'Apply Perturbation: ', ApplyPerturbation
+      'Apply Perturbation:           ', ApplyPerturbation
     WRITE(*,'(6x,A,I1)') &
-      'Perturbation order: ', PerturbationOrder
+      'Perturbation order:           ', PerturbationOrder
     WRITE(*,'(6x,A,ES9.2E3)') &
-      'Perturbation amplitude: ', PerturbationAmplitude
+      'Perturbation amplitude:       ', PerturbationAmplitude
     WRITE(*,'(6x,A,ES9.2E3,A)') &
       'Inner radius of perturbation: ', rPerturbationInner / Kilometer, ' km'
     WRITE(*,'(6x,A,ES9.2E3,A)') &
       'Outer radius of perturbation: ', rPerturbationOuter / Kilometer, ' km'
 
-    !  --- Locate first element containing un-shocked fluid ---
+    ! --- Make local copies of Lapse and Conformal Factor ---
+
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      DO iNodeX3 = 1, nNodesX(3)
+      DO iNodeX2 = 1, nNodesX(2)
+      DO iNodeX1 = 1, nNodesX(1)
+
+        iNodeX = NodeNumberX(iNodeX1,iNodeX2,iNodeX3)
+
+        Alpha(iNodeX1,iX1) = uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha)
+        Psi  (iNodeX1,iX1) = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)
+
+      END DO
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Locate first element/node containing un-shocked fluid ---
 
     X1 = 0.0_DP
 
@@ -1436,78 +1526,58 @@ CONTAINS
 
     END DO
 
-    ! --- Compute fields, pre-shock ---
+    ! --- Pre-shock Fields ---
 
-    ! --- Compute polytropic constant for pre-shock flow ---
+    X1 = NodeCoordinate( MeshX(1), iX_E1(1), nNodesX(1) )
 
-    iX1     = iX_E1(1)
-    iNodeX1 = nNodesX(1)
+    ! --- Use Newtonian values as initial guesses ---
 
-    X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+    V0 = -SQRT( Two * GravitationalConstant * MassPNS / X1 )
+    D0 = -Mdot / ( FourPi * X1**2 * V0 )
+    P0 = Ka * D0**( Gamma_IDEAL )
 
-    Alpha = LapseFunction  ( X1, MassPNS )
-    Psi   = ConformalFactor( X1, MassPNS )
-
-    V(iNodeX1,iX1) &
-      = -Psi**(-2) * SpeedOfLight * SQRT( One - Alpha**2 )
-
-    D(iNodeX1,iX1) &
-      = Psi**(-6) * AccretionRate &
-          / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
-
-    VSq = Psi**4 * V(iNodeX1,iX1)**2
-
-    P(iNodeX1,iX1) &
-      = D(iNodeX1,iX1) * VSq &
-          / ( MachNumber**2 * Gamma_IDEAL &
-                - Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-                * VSq / SpeedOfLight**2 )
-
-    PolytropicConstant &
-      = P(iNodeX1,iX1) * D(iNodeX1,iX1)**( -Gamma_IDEAL )
-
-    DO iX1 = iX_E1(1), iX1_2, -1
+    DO iX1 = iX_E1(1), iX1_1, -1
 
       DO iNodeX1 = nNodesX(1), 1, -1
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        IF( X1 .LT. X1_1 ) CYCLE
+        IF( X1 .LE. ShockRadius ) CYCLE
 
-        Alpha = LapseFunction  ( X1, MassPNS )
-        Psi   = ConformalFactor( X1, MassPNS )
+        CALL NewtonRaphson_SAS &
+               ( X1, MassPNS, Ka, Mdot, &
+                 Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
+                 D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
 
-        V(iNodeX1,iX1) &
-          = -Psi**(-2) * SpeedOfLight * SQRT( One - Alpha**2 )
-
-        D(iNodeX1,iX1) &
-          = Psi**(-6) * AccretionRate &
-              / ( FourPi * X1**2 * ABS( V(iNodeX1,iX1) ) )
-
-        P(iNodeX1,iX1) &
-          = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
-
-!!$        VSq = Psi**4 * V(iNodeX1,iX1)**2
-!!$
-!!$        P(iNodeX1,iX1) &
-!!$          = D(iNodeX1,iX1) * VSq &
-!!$              / ( Gamma_IDEAL * MachNumber**2 ) &
-!!$              / ( One - ( VSq / SpeedOfLight**2 ) &
-!!$              / ( MachNumber**2 * ( Gamma_IDEAL - One ) ) )
+        D0 = D(iNodeX1,iX1)
+        V0 = V(iNodeX1,iX1)
+        P0 = P(iNodeX1,iX1)
 
       END DO
 
     END DO
 
-    ! --- Apply jump conditions ---
+    ! --- Apply Jump Conditions ---
 
     D_1 = D(iNodeX1_1,iX1_1)
     V_1 = V(iNodeX1_1,iX1_1)
+    P_1 = P(iNodeX1_1,iX1_1)
 
-    CALL ApplyJumpConditions &
-           ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &
-             iX1_2, iNodeX1_2, X1_2, &
-             D_2, V_2, P_2, MassPNS, PolytropicConstant )
+    W = LorentzFactor( Psi(iNodeX1_1,iX1), V_1 )
+
+    C1 = D_1 * W * V_1
+    C2 = D_1 &
+           * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                 * P_1 / D_1  ) * W**2 * V_1**2 / SpeedOfLight**2 &
+           + Psi(iNodeX1_1,iX1)**( -4 ) * P_1
+    C3 = D_1 &
+           * ( SpeedOfLight**2 + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                 * P_1 / D_1  ) * W**2 * V_1
+
+    CALL ApplyJumpConditions_SAS &
+           ( Psi(iNodeX1_1,iX1), V_1, C1, C2, C3, D_2, V_2, P_2 )
+
+    Kb = P_2 / D_2**( Gamma_IDEAL )
 
     WRITE(*,*)
     WRITE(*,'(6x,A)') 'Shock location:'
@@ -1524,15 +1594,11 @@ CONTAINS
       'Compression Ratio LOG10(D_2/D_1) = ', LOG( D_2 / D_1 ) / LOG( 10.0_DP )
     WRITE(*,*)
 
-    ! --- Compute fields, post-shock ---
+    ! --- Post-shock Fields ---
 
-    Alpha = LapseFunction  ( X1_1, MassPNS )
-    Psi   = ConformalFactor( X1_1, MassPNS )
-    W     = LorentzFactor( Psi, V_1 )
-
-    MassConstant = Psi**6 * Alpha * X1_1**2 * D_1 * W * V_1
-
+    D0 = D_2
     V0 = V_2
+    P0 = P_2
 
     DO iX1 = iX1_2, iX_B1(1), -1
 
@@ -1540,39 +1606,31 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        IF( X1 .GT. X1_2 ) CYCLE
+        IF( X1 .GT. ShockRadius ) CYCLE
 
-        Alpha = LapseFunction  ( X1, MassPNS )
-        Psi   = ConformalFactor( X1, MassPNS )
+        CALL NewtonRaphson_SAS &
+               ( X1, MassPNS, Kb, Mdot, &
+                 Alpha(iNodeX1,iX1), Psi(iNodeX1,iX1), D0, V0, P0, &
+                 D(iNodeX1,iX1), V(iNodeX1,iX1), P(iNodeX1,iX1) )
 
-        CALL NewtonRaphson_PostShockVelocity &
-               ( Alpha, Psi, MassConstant, PolytropicConstant, &
-                 MassPNS, AccretionRate, X1, V0  )
-
-        V(iNodeX1,iX1) = V0
-
-        W = LorentzFactor( Psi, V0 )
-
-        D(iNodeX1,iX1) &
-          = MassConstant / ( Psi**6 * Alpha * X1**2  * W * V0 )
-
-        P(iNodeX1,iX1) &
-          = PolytropicConstant * D(iNodeX1,iX1)**( Gamma_IDEAL )
+        D0 = D(iNodeX1,iX1)
+        V0 = V(iNodeX1,iX1)
+        P0 = P(iNodeX1,iX1)
 
       END DO
 
     END DO
 
-    ! --- Map to 3D domain ---
+    ! --- Map to 3D Domain ---
 
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNodeX3 = 1, nNodesX(3)
-      DO iNodeX2 = 1, nNodesX(2)
-      DO iNodeX1 = 1, nNodesX(1)
 
-        iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
 
         IF( ApplyPerturbation )THEN
 
@@ -1604,31 +1662,26 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V(iNodeX1,iX1)
         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
-        uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = P(iNodeX1,iX1)
-        uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-          = uAF(iNodeX,iX1,iX2,iX3,iAF_P ) / ( Gamma_IDEAL - One )
-
-        CALL ComputeConserved_Euler_Relativistic &
-               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ),       &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1),       &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2),       &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3),       &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ),       &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne),       &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ),       &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1),       &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2),       &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3),       &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ),       &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne),       &
-                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_P ) )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = P(iNodeX1,iX1) / ( Gamma_IDEAL - One )
 
       END DO
-      END DO
-      END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
+
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
     END DO
     END DO
     END DO
@@ -1639,8 +1692,8 @@ CONTAINS
   SUBROUTINE InitializeFields_StaticTOV
 
     REAL(DP), PARAMETER :: &
-!!$      CentralDensity = 3.301e14_DP * ( Gram / Centimeter**3 ), &
-      CentralDensity = 7.906e14_DP * ( Gram / Centimeter**3 ), &
+      CentralDensity = 3.301e14_DP * ( Gram / Centimeter**3 ), &
+!!$      CentralDensity = 7.906e14_DP * ( Gram / Centimeter**3 ), &
       dX1            = 1.0e-4_DP * Kilometer, &
       TolF           = 1.0e-15_DP
 
@@ -1893,15 +1946,37 @@ CONTAINS
     REAL(DP), INTENT(in) :: CoreRadius
     REAL(DP), INTENT(in) :: CollapseTime
 
+    LOGICAL, PARAMETER :: ReadFromFile = .TRUE.
+
+    IF( ReadFromFile )THEN
+
+      CALL InitializeFields_YahilCollapse_FromFile &
+             ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
+
+    ELSE
+
+      CALL InitializeFields_YahilCollapse_FromScratch &
+             ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
+
+    END IF
+
+  END SUBROUTINE InitializeFields_YahilCollapse
+
+
+  SUBROUTINE InitializeFields_YahilCollapse_FromFile &
+    ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
+
+    REAL(DP), INTENT(in) :: CentralDensity
+    REAL(DP), INTENT(in) :: CentralPressure
+    REAL(DP), INTENT(in) :: CoreRadius
+    REAL(DP), INTENT(in) :: CollapseTime
+
     CHARACTER(LEN=64) :: FileName
     INTEGER           :: nLines
 
-    LOGICAL               :: InitializeFromFile
     INTEGER               :: iX1, iX2, iX3, iNodeX, iNodeX1, iX_L
     REAL(DP)              :: K, C_X, C_D, C_V, C_M, R, XX
     REAL(DP), ALLOCATABLE :: X(:), D(:), V(:), M(:)
-
-    InitializeFromFile = .TRUE.
 
     K = CentralPressure / CentralDensity**( Gamma_IDEAL )
 
@@ -1942,264 +2017,597 @@ CONTAINS
             * GravitationalConstant**( ( One - Three * Gamma_IDEAL ) / Two ) &
             * CollapseTime**( Four - Three * Gamma_IDEAL )
 
-    IF( InitializeFromFile )THEN
+    FileName = 'YahilHomologousCollapse_Gm_130.dat'
 
-      FileName = 'YahilHomologousCollapse_Gm_130.dat'
+    ! --- https://stackoverflow.com/questions/30692424/
+    !     how-to-read-number-of-lines-in-fortran-90-from-a-text-file
+    nLines = 0
+    OPEN(100,FILE=TRIM(FileName))
+    READ(100,*)
+    DO
+      READ(100,*,END=10)
+      nLines = nLines + 1
+    END DO
+    10 CLOSE(100)
 
-      ! --- https://stackoverflow.com/questions/30692424/
-      !     how-to-read-number-of-lines-in-fortran-90-from-a-text-file
-      nLines = 0
-      OPEN(100,FILE=TRIM(FileName))
-      READ(100,*)
-      DO
-        READ(100,*,END=10)
-        nLines = nLines + 1
-      END DO
-      10 CLOSE(100)
+    ALLOCATE( X(nLines) )
+    ALLOCATE( D(nLines) )
+    ALLOCATE( V(nLines) )
+    ALLOCATE( M(nLines) )
 
-      ALLOCATE( X(nLines) )
-      ALLOCATE( D(nLines) )
-      ALLOCATE( V(nLines) )
-      ALLOCATE( M(nLines) )
+    OPEN(100,FILE=TRIM(FileName))
+    READ(100,*)
 
-      OPEN(100,FILE=TRIM(FileName))
-      READ(100,*)
+    DO iX1 = 1, nLines
 
-      DO iX1 = 1, nLines
+      READ(100,*) X(iX1), D(iX1), V(iX1), M(iX1)
 
-        READ(100,*) X(iX1), D(iX1), V(iX1), M(iX1)
+    END DO
 
-      END DO
+    CLOSE(100)
 
-      CLOSE(100)
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Mass:                ', &
+      M(nLines) * C_M / SolarMass, ' Msun'
+    WRITE(*,*)
 
-      WRITE(*,'(6x,A,ES10.3E3,A)') &
-        'Mass:                ', &
-        M(nLines) * C_M / SolarMass, ' Msun'
-      WRITE(*,*)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E1(1)
 
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E1(1)
+     DO iNodeX = 1, nDOFX
 
-       DO iNodeX = 1, nDOFX
+       iNodeX1 = NodeNumberTableX(1,iNodeX)
 
-         iNodeX1 = NodeNumberTableX(1,iNodeX)
+       R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+       XX = C_X * R
 
-         R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-         XX = C_X * R
+       iX_L = Locate( XX, X, nLines )
 
-         iX_L = Locate( XX, X, nLines )
+       uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+         = C_D * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                       D(iX_L), D(iX_L+1) )
 
-         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
-           = C_D * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                         D(iX_L), D(iX_L+1) )
+       uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+         = C_V * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                       V(iX_L), V(iX_L+1) )
 
-         uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-           = C_V * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                         V(iX_L), V(iX_L+1) )
+       uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
 
-         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+       uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
 
-         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+       uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
+         = K * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
+             / ( Gamma_IDEAL - One )
 
-         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
-           = K * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
-               / ( Gamma_IDEAL - One )
+     END DO
 
-       END DO
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
-        CALL ComputePressureFromPrimitive_IDEAL &
-               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
-                 uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
 
-        CALL ComputeConserved_Euler_Relativistic &
-               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-                 uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-                 uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-                 uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(:,iX1,iX2,iX3,iAF_P) )
+    END DO
+    END DO
+    END DO
 
-      END DO
-      END DO
-      END DO
+    DEALLOCATE( M )
+    DEALLOCATE( V )
+    DEALLOCATE( D )
+    DEALLOCATE( X )
 
-      DEALLOCATE( M )
-      DEALLOCATE( V )
-      DEALLOCATE( D )
-      DEALLOCATE( X )
+  END SUBROUTINE InitializeFields_YahilCollapse_FromFile
 
-    ELSE
-    END IF
 
-  END SUBROUTINE InitializeFields_YahilCollapse
+  SUBROUTINE InitializeFields_YahilCollapse_FromScratch &
+    ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
 
-!!$  SUBROUTINE InitializeFields_YahilCollapse &
-!!$    ( CentralDensity, CentralPressure, CoreRadius, CollapseTime )
-!!$
-!!$    REAL(DP), INTENT(in) :: CentralDensity
-!!$    REAL(DP), INTENT(in) :: CentralPressure
-!!$    REAL(DP), INTENT(in) :: CoreRadius
-!!$    REAL(DP), INTENT(in) :: CollapseTime
-!!$
-!!$    INTEGER               :: N
-!!$    REAL(DP)              :: dr, dX, K, C_X, C_D, C_V, C_M, dD
-!!$    REAL(DP), ALLOCATABLE :: R(:), X(:), D(:), U(:), V(:), M(:)
-!!$
-!!$    INTEGER :: iX1
-!!$real(dp)::constraint
-!!$
-!!$    K = CentralPressure / CentralDensity**( Gamma_IDEAL )
-!!$
-!!$    WRITE(*,*)
-!!$    WRITE(*,'(6x,A,F5.3)') &
-!!$      'Adiabatic Gamma:     ', &
-!!$      Gamma_IDEAL
-!!$    WRITE(*,'(6x,A,ES10.3E3,A)') &
-!!$      'Central Density:     ', &
-!!$      CentralDensity / ( Gram / Centimeter**3  ), ' g/cm^3'
-!!$    WRITE(*,'(6x,A,ES10.3E3,A)') &
-!!$      'Central Pressure:    ', &
-!!$      CentralPressure / ( Erg / Centimeter**3  ), ' erg/cm^3'
-!!$    WRITE(*,'(6x,A,ES10.3E3,A)') &
-!!$      'Polytropic Constant: ', &
-!!$      K / ( Erg / Centimeter**3 &
-!!$              / ( Gram / Centimeter**3  )**( Gamma_IDEAL ) ), &
-!!$      ' ( erg/cm^3 ) / ( g/cm^3 )^( Gamma )'
-!!$    WRITE(*,'(6x,A,ES10.3E3,A)') &
-!!$      'Core Radius:         ', &
-!!$      CoreRadius / Kilometer, ' km'
-!!$    WRITE(*,'(6x,A,ES10.3E3,A)') &
-!!$      'Collapse Time:       ', &
-!!$      CollapseTime / Millisecond, ' ms'
-!!$    WRITE(*,*)
-!!$
-!!$    dr = 1.0e0_DP * Kilometer
-!!$    N = CoreRadius / dr
-!!$
-!!$    C_X = K**( -Half ) &
-!!$            * GravitationalConstant**( ( Gamma_IDEAL - One ) / Two ) &
-!!$            * CollapseTime**( Gamma_IDEAL - Two )
-!!$    C_D = GravitationalConstant**( -1 ) * CollapseTime**( -2 )
-!!$    C_V = K**( Half ) &
-!!$            * GravitationalConstant**( ( One - Gamma_IDEAL ) / Two ) &
-!!$            * CollapseTime**( One - Gamma_IDEAL )
-!!$    C_M = K**( Three / Two ) &
-!!$            * GravitationalConstant**( ( One - Three * Gamma_IDEAL ) / Two ) &
-!!$            * CollapseTime**( Four - Three * Gamma_IDEAL )
-!!$
-!!$    dX = C_X * dr
-!!$
-!!$    ALLOCATE( R(N) )
-!!$    ALLOCATE( X(N) )
-!!$    ALLOCATE( D(N) )
-!!$    ALLOCATE( U(N) )
-!!$    ALLOCATE( V(N) )
-!!$    ALLOCATE( M(N) )
-!!$
-!!$    R(1) = SqrtTiny * Kilometer
-!!$    X(1) = C_X * R(1)
-!!$    D(1) = CentralDensity / C_D
-!!$    U(1) = Zero!-( Gamma_IDEAL - Two ) * X(1)
-!!$    M(1) = Zero
-!!$    DO iX1 = 2, N
-!!$
-!!$      IF( MOD( iX1, 100 ) .EQ. 0 )THEN
-!!$
-!!$        WRITE(*,'(F4.2)') DBLE(iX1) / DBLE(N)
-!!$
-!!$      END IF
-!!$
-!!$      X(iX1) = X(iX1-1) + dX
-!!$
-!!$      dD     = dDdX( X(iX1-1), D(iX1-1), U(iX1-1), M(iX1-1) )
-!!$
-!!$      D(iX1) = D(iX1-1) + dX * dD
-!!$
-!!$      U(iX1) = U(iX1-1) + dX * dUdX( X(iX1-1), D(iX1-1), U(iX1-1), dD )
-!!$
-!!$      CALL IntegrateM( X(1:iX1), dX, D(1:iX1), M(iX1) )
-!!$
-!!$constraint = FourPi * X(iX1)**2 * D(iX1) * ABS( U(iX1) ) &
-!!$               / ( ( Four - Three * Gamma_IDEAL ) * M(iX1) ) - One
-!!$
-!!$if(X(iX1).gt.1000.0d0)stop!!$if(abs(constraint).gt.1.0e-10_DP)then
-!!$print*, 'X: ', X(iX1)
-!!$print*, 'Radius: ', X(iX1) / C_X / Kilometer, ' km'
-!!$print*, 'Mass:   ', C_M * M(iX1) / SolarMass, ' Msun'
-!!$print*,'Constraint: ', Constraint
-!!$print*
-!!$!!$stop
-!!$!!$endif
-!!$
-!!$    END DO
-!!$
-!!$    DEALLOCATE( M )
-!!$    DEALLOCATE( V )
-!!$    DEALLOCATE( U )
-!!$    DEALLOCATE( D )
-!!$    DEALLOCATE( X )
-!!$    DEALLOCATE( R )
-!!$
-!!$stop
-!!$
-!!$  END SUBROUTINE InitializeFields_YahilCollapse
+    REAL(DP), INTENT(in) :: CentralDensity
+    REAL(DP), INTENT(in) :: CentralPressure
+    REAL(DP), INTENT(in) :: CoreRadius
+    REAL(DP), INTENT(in) :: CollapseTime
+
+    INTEGER               :: N, iX1, iX2, iX3, iNodeX, iNodeX1, iX_L
+    REAL(DP)              :: dr, dX, K, XX, R, C_X, C_D, C_V, C_M
+    REAL(DP), ALLOCATABLE :: X(:), D(:), U(:), V(:), M(:), Numer(:), Denom(:)
+    LOGICAL               :: CONVERGED
+
+    K = CentralPressure / CentralDensity**( Gamma_IDEAL )
+
+    WRITE(*,*)
+    WRITE(*,'(6x,A,F5.3)') &
+      'Adiabatic Gamma:     ', &
+      Gamma_IDEAL
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Central Density:     ', &
+      CentralDensity / ( Gram / Centimeter**3  ), ' g/cm^3'
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Central Pressure:    ', &
+      CentralPressure / ( Erg / Centimeter**3  ), ' erg/cm^3'
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Polytropic Constant: ', &
+      K / ( Erg / Centimeter**3 &
+              / ( Gram / Centimeter**3  )**( Gamma_IDEAL ) ), &
+      ' ( erg/cm^3 ) / ( g/cm^3 )^( Gamma )'
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Core Radius:         ', &
+      CoreRadius / Kilometer, ' km'
+    WRITE(*,'(6x,A,ES10.3E3,A)') &
+      'Collapse Time:       ', &
+      CollapseTime / Millisecond, ' ms'
+
+    dr = 1.0e-2_DP * Kilometer
+    N = ( 1.1_DP * CoreRadius ) / dr ! Extra elements needed for ghost cells
+
+    ! --- Conversion factors from Yahil paper ---
+
+    C_X = K**( -Half ) &
+            * GravitationalConstant**( ( Gamma_IDEAL - One ) / Two ) &
+            * CollapseTime**( Gamma_IDEAL - Two )
+    C_D = GravitationalConstant**( -1 ) * CollapseTime**( -2 )
+    C_V = K**( Half ) &
+            * GravitationalConstant**( ( One - Gamma_IDEAL ) / Two ) &
+            * CollapseTime**( One - Gamma_IDEAL )
+    C_M = K**( Three / Two ) &
+            * GravitationalConstant**( ( One - Three * Gamma_IDEAL ) / Two ) &
+            * CollapseTime**( Four - Three * Gamma_IDEAL )
+
+    dX = C_X * dr
+
+    ALLOCATE( Numer(N) )
+    ALLOCATE( Denom(N) )
+    ALLOCATE( X(N) )
+    ALLOCATE( D(N) )
+    ALLOCATE( U(N) )
+    ALLOCATE( V(N) )
+    ALLOCATE( M(N) )
+
+    X    (1) = SqrtTiny
+    D    (1) = CentralDensity / C_D
+    U    (1) = -( Gamma_IDEAL - Two ) * X(1)
+    M    (1) = Zero
+    Numer(1) = Numerator  ( X(1), D(1), U(1), M(1) )
+    Denom(1) = Denominator( D(1), U(1) )
+
+    CONVERGED = .FALSE.
+
+    DO WHILE( .NOT. CONVERGED )
+
+      CALL IntegrateD( dX, X, D, U, M, Numer, Denom, CONVERGED )
+
+    END DO
+
+    WRITE(*,'(6x,A,ES11.3E3,A)') &
+      'Mass:               ', &
+      M(N) * C_M / SolarMass, ' Msun'
+    WRITE(*,*)
+
+    V = ( Gamma_IDEAL - Two ) * X + U
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E1(1)
+
+     DO iNodeX = 1, nDOFX
+
+       iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+       R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+       XX = C_X * R
+
+       iX_L = Locate( XX, X, N )
+
+       uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+         = C_D * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                       D(iX_L), D(iX_L+1) )
+
+       uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+         = C_V * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                       V(iX_L), V(iX_L+1) )
+
+       uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+
+       uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+
+       uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
+         = K * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
+             / ( Gamma_IDEAL - One )
+
+     END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
+
+      CALL ComputeConserved_Euler_Relativistic &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+               uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+               uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uAF(:,iX1,iX2,iX3,iAF_P) )
+
+    END DO
+    END DO
+    END DO
+
+    DEALLOCATE( M )
+    DEALLOCATE( V )
+    DEALLOCATE( U )
+    DEALLOCATE( D )
+    DEALLOCATE( X )
+    DEALLOCATE( Denom )
+    DEALLOCATE( Numer )
+
+  END SUBROUTINE InitializeFields_YahilCollapse_FromScratch
 
 
   ! --- Auxiliary functions for Yahil collapse problem ---
 
-  REAL(DP) FUNCTION dDdX( X, D, U, M )
 
-    REAL(DP), INTENT(in) :: X, D, U, M
+  SUBROUTINE IntegrateD( dX, X, D, U, M, Numer, Denom, CONVERGED )
 
-    dDdX = ( -M / X**2 + Two * U**2 / X + ( Gamma_IDEAL - One ) * U &
-             + ( Gamma_IDEAL - One ) * ( Two - Gamma_IDEAL ) * X ) &
-             / ( Gamma_IDEAL * D**( Gamma_IDEAL - One ) - U**2 ) / D
+    REAL(DP), INTENT(in)    :: dX
+    REAL(DP), INTENT(inout) :: X(:), D(:), U(:), M(:), Numer(:), Denom(:)
+    LOGICAL,  INTENT(out)   :: CONVERGED
 
-  END FUNCTION dDdX
+    REAL(DP)            :: dD, dM, dNumer, dDenom
+    INTEGER             :: iX1
+    LOGICAL             :: FirstTime, WriteToFile
+    REAL(DP), PARAMETER :: Threshold = 0.015_DP
 
+    CONVERGED = .FALSE.
 
-  REAL(DP) FUNCTION dUdX( X, D, U, dDdX )
+    FirstTime = .TRUE.
 
-    REAL(DP), INTENT(in) :: X, D, U, dDdX
+    WriteToFile = .FALSE.
 
-    dUdX = Four - Three * Gamma_IDEAL - Two * U / X - U / D * dDdX
+    IF( WriteToFile )THEN
 
-  END FUNCTION dUdX
+      OPEN(100,FILE='X.dat')
+      OPEN(101,FILE='D.dat')
+      OPEN(102,FILE='V.dat')
+      OPEN(103,FILE='Numer.dat')
+      OPEN(104,FILE='Denom.dat')
 
-
-  SUBROUTINE IntegrateM( X, dX, D, M )
-
-    REAL(DP), INTENT(in)  :: X(:), dX, D(:)
-    REAL(DP), INTENT(out) :: M
-
-    INTEGER :: iX1, N
-
-    N = SIZE( D )
-
-    M = Half * ( D(1) * X(1)**2 + D(N) * X(N)**2 )
-
-    IF( N .GT. 2 )THEN
-
-      DO iX1 = 2, N-1
-
-        M = M + D(iX1) * X(iX1)**2
-
-      END DO
+      WRITE(100,*) X(1)
+      WRITE(101,*) D(1)
+      WRITE(102,*) ( Gamma_IDEAL - Two ) * X(1) + U(1)
+      WRITE(103,*) Numer(1)
+      WRITE(104,*) Denom(1)
 
     END IF
 
-    M = FourPi * dX * M
+    DO iX1 = 2, SIZE(X)
 
-  END SUBROUTINE IntegrateM
+      dD = Numer(iX1-1) / Denom(iX1-1)
+      D(iX1) = D(iX1-1) + dX * dD
+
+      ! --- Check for 'infinite' derivative ---
+
+      IF( ABS( dD ) .GT. 5.0_DP )THEN
+
+        PRINT*, 'Infinite derivative'
+
+        X    (1) = SqrtTiny
+        D    (1) = 0.9_DP * D(1)
+        U    (1) = -( Gamma_IDEAL - Two ) * X(1)
+        M    (1) = Zero
+        Numer(1) = Numerator  ( X(1), D(1), U(1), M(1) )
+        Denom(1) = Denominator( D(1), U(1) )
+
+        RETURN
+      END IF
+
+      dM     = dMdX( X(iX1-1), D(iX1-1) )
+      M(iX1) = M(iX1-1) + dX * dM
+
+      X(iX1) = X(iX1-1) + dX
+
+      U(iX1) = ( Four - Three * Gamma_IDEAL ) * M(iX1) &
+                 / ( FourPi * X(iX1)**2 * D(iX1) )
+
+      Numer(iX1) = Numerator  ( X(iX1), D(iX1), U(iX1), M(iX1) )
+      Denom(iX1) = Denominator( D(iX1), U(iX1) )
+
+      IF( ABS( Denom(iX1) ) .LT. Threshold .AND. FirstTime )THEN
+
+        dNumer = Numer(iX1) - Numer(iX1-1)
+        dDenom = Denom(iX1) - Denom(iX1-1)
+
+        FirstTime = .FALSE.
+
+      ELSE IF( ABS( Denom(iX1) ) .LT. Threshold )THEN
+
+        Numer(iX1) = Numer(iX1-1) + dNumer
+        Denom(iX1) = Denom(iX1-1) + dDenom
+
+      END IF
+
+      IF( WriteToFile )THEN
+
+        WRITE(100,*) X(iX1)
+        WRITE(101,*) D(iX1)
+        WRITE(102,*) ( Gamma_IDEAL - Two ) * X(iX1) + U(iX1)
+        WRITE(103,*) Numer(iX1)
+        WRITE(104,*) Denom(iX1)
+
+      END IF
+
+    END DO
+
+    IF( WriteToFile )THEN
+
+      CLOSE(104)
+      CLOSE(103)
+      CLOSE(102)
+      CLOSE(101)
+      CLOSE(100)
+
+    END IF
+
+    ! --- Check for sub-sonic maximum ---
+
+    IF( MINVAL( Denom ) .GT. Zero )THEN
+
+      PRINT*, 'Sub-sonic maxmum'
+
+      X    (1) = SqrtTiny
+      D    (1) = 1.5_DP * D(1)
+      U    (1) = -( Gamma_IDEAL - Two ) * X(1)
+      M    (1) = Zero
+      Numer(1) = Numerator  ( X(1), D(1), U(1), M(1) )
+      Denom(1) = Denominator( D(1), U(1) )
+
+      RETURN
+    END IF
+
+    CONVERGED = .TRUE.
+
+  END SUBROUTINE IntegrateD
+
+
+  REAL(DP) FUNCTION Numerator( X, D, U, M )
+
+    REAL(DP), INTENT(in) :: X, D, U, M
+
+    Numerator = D * ( -M / X**2 + Two * U**2 / X + ( Gamma_IDEAL - One ) * U &
+                  + ( Gamma_IDEAL - One ) * ( Two - Gamma_IDEAL ) * X )
+
+  END FUNCTION Numerator
+
+
+  REAL(DP) FUNCTION Denominator( D, U )
+
+    REAL(DP), INTENT(in) :: D, U
+
+    Denominator = Gamma_IDEAL * D**( Gamma_IDEAL - One ) - U**2
+
+  END FUNCTION Denominator
+
+
+  REAL(DP) FUNCTION dMdX( X, D )
+
+    REAL(DP), INTENT(in) :: X, D
+
+    dMdX = FourPi * X**2 * D
+
+  END FUNCTION dMdX
 
 
   ! --- End of auxiliary functions for Yahil collapse problem ---
+
+
+  ! --- Auxiliary functions for standing accretion shock problem ---
+
+
+  SUBROUTINE NewtonRaphson_SAS &
+    ( X1, MassPNS, K, Mdot, Alpha, Psi, D0, V0, P0, D, V, P )
+
+    REAL(DP), INTENT(in)  :: X1, MassPNS, K, &
+                             Mdot, Alpha, Psi, D0, V0, P0
+    REAL(DP), INTENT(out) :: D ,V ,P
+
+    REAL(DP) :: W
+    REAL(DP) :: Jac(3,3), invJac(3,3)
+    REAL(DP) :: f(3), uO(3), uN(3), du(3)
+
+    LOGICAL             :: CONVERGED
+    INTEGER             :: ITER
+    REAL(DP), PARAMETER :: Tolu = 1.0e-16_DP
+    REAL(DP), PARAMETER :: Tolf = 1.0e-16_DP
+    INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolu ) /  LOG( Two ) )
+
+    uO(1) = One
+    uO(2) = One
+    uO(3) = One
+
+    CONVERGED = .FALSE.
+    ITER      = 0
+    DO WHILE( .NOT. CONVERGED .AND. ITER .LT. MAX_ITER )
+
+      ITER = ITER + 1
+
+      W = LorentzFactor( Psi, V0 * uO(2) )
+
+      f(1) &
+        = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0 &
+            * uO(1) * W * uO(2) + One
+      f(2) &
+        = Alpha * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                      * P0 / ( D0 * SpeedOfLight**2 ) * uO(3) / uO(1) ) * W &
+            - One
+      f(3) &
+        = P0 * D0**( -Gamma_IDEAL ) / K * uO(3) * uO(1)**( -Gamma_IDEAL ) - One
+
+      Jac(1,1) = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0 &
+                   * W * uO(2)
+      Jac(1,2) = FourPi * Alpha * Psi**6 * X1**2 / Mdot * D0 * V0 &
+                   * uO(1) * W**3
+      Jac(1,3) = Zero
+      Jac(2,1) = -Alpha * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P0 / ( D0 * SpeedOfLight**2 ) * uO(3) / uO(1)**2 * W
+      Jac(2,2) = Alpha * ( One + Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P0 / ( D0 * SpeedOfLight**2 ) * uO(3) / uO(1) ) &
+                   * W**3 * Psi**4 * V0**2 / SpeedOfLight**2 * uO(2)
+      Jac(2,3) = Alpha * Gamma_IDEAL / ( Gamma_IDEAL - One ) &
+                   * P0 / ( D0 * SpeedOfLight**2 ) / uO(1) * W
+      Jac(3,1) = -P0 * D0**( -Gamma_IDEAL ) / K &
+                   * Gamma_IDEAL * uO(3) * uO(1)**( -Gamma_IDEAL - One )
+
+      Jac(3,2) = Zero
+      Jac(3,3) = P0 * D0**( -Gamma_IDEAL ) / K &
+                   * uO(1)**( -Gamma_IDEAL )
+
+      InvJac = Inv3x3( Jac )
+
+      uN = uO - MATMUL( InvJac, f )
+
+      du = uN - uO
+
+      IF( MAXVAL( ABS( du / uO ) ) .LT. Tolu ) CONVERGED = .TRUE.
+
+      uO = uN
+
+    END DO
+
+    D = uN(1) * D0
+    V = uN(2) * V0
+    P = uN(3) * P0
+
+  END SUBROUTINE NewtonRaphson_SAS
+
+
+  SUBROUTINE ApplyJumpConditions_SAS( Psi, V_1, C1, C2, C3, D_2, V_2, P_2 )
+
+    REAL(DP), INTENT(in)  :: Psi, V_1, C1, C2, C3
+    REAL(DP), INTENT(out) :: D_2, V_2, P_2
+
+    REAL(DP) :: A, B, C, D, E
+    REAL(DP) :: dx, xa, xb, xc, fa, fb, fc, W
+
+    INTEGER             :: ITER
+    INTEGER,  PARAMETER :: MAX_ITER = 1000
+    REAL(DP), PARAMETER :: TolChi = 1.0e-16_DP
+
+    LOGICAL :: CONVERGED
+
+    A = SpeedOfLight**( -4 ) * ( C3 / C1 )**2 - One
+    B = -Two * SpeedOfLight**( 3 ) * C2 * C3 / C1**2 &
+          * Gamma_IDEAL / ( Gamma_IDEAL - One ) * Psi**4
+    C = SpeedOfLight**( -2 ) * ( C2 / C1 )**2 &
+          * ( Gamma_IDEAL / ( Gamma_IDEAL - One ) )**2 * Psi**8 &
+          + Two * SpeedOfLight**( -4 ) * ( C3 / C1 )**2 &
+          / ( Gamma_IDEAL - One ) * Psi**4 + Psi**4
+    D = -Two * SpeedOfLight**( -3 ) * C2 * C3 / C1**2 &
+          * Gamma_IDEAL / ( Gamma_IDEAL - One )**2 * Psi**8
+    E = SpeedOfLight**( -4 ) * ( C3 / C1 )**2 &
+          / ( Gamma_IDEAL - One )**2 * Psi**8
+
+    ! --- Solve with bisection ---
+
+    ! Add 1 km/s to exclude smooth solution
+    xa = ( V_1 + One * Kilometer / Second ) / SpeedOfLight
+
+    xb = 1.0e-10_DP * xa
+
+    fa = A * xa**( -2 ) + B * xa**( -1 ) &
+             + C + D * xa + E * xa**2
+    fb = A * xb**( -2 ) + B * xb**( -1 ) &
+             + C + D * xb + E * xb**2
+
+    dx = xb - xa
+
+    ITER      = 0
+    CONVERGED = .FALSE.
+    DO WHILE( .NOT. CONVERGED .AND. ITER .LT. MAX_ITER )
+
+      ITER = ITER + 1
+
+      dx = Half * dx
+
+      xc = xa + dx
+
+      fc = A * xc**( -2 ) + B * xc**( -1 ) + C + D * xc + E * xc**2
+
+      IF( fa * fc .LT. Zero )THEN
+
+        xb = xc
+        fb = fc
+
+      ELSE IF( fa * fc .GT. Zero )THEN
+
+        xa = xc
+        fa = fc
+
+      ELSE
+
+        CONVERGED = .TRUE.
+
+      END IF
+
+      IF( ABS( dx / xa ) .LT. TolChi ) CONVERGED = .TRUE.
+
+    END DO
+
+    V_2 = xc * SpeedOfLight
+
+    W = LorentzFactor( Psi, V_2 )
+
+    D_2 = SpeedOfLight**( -1 ) * ABS( C1 ) * SQRT( xc**( -2 ) - Psi**4 )
+    P_2 = ( C3 - D_2 * SpeedOfLight**2 * W**2 * V_2 ) &
+            / ( Gamma_IDEAL / ( Gamma_IDEAL - One ) * W**2 * V_2 )
+
+  END SUBROUTINE ApplyJumpConditions_SAS
+
+
+  ! --- From: http://fortranwiki.org/fortran/show/Matrix+inversion ---
+  FUNCTION Inv3x3( A ) RESULT( invA )
+
+    ! --- Performs a direct calculation of the inverse of a 3×3 matrix ---
+
+    REAL(DP), INTENT(in) :: A   (3,3)
+    REAL(DP)             :: invA(3,3)
+    REAL(DP)             :: InvDet
+
+    ! --- Calculate the inverse of the determinant of the matrix ---
+
+    InvDet = One / ( A(1,1)*A(2,2)*A(3,3) - A(1,1)*A(2,3)*A(3,2)     &
+                       - A(1,2)*A(2,1)*A(3,3) + A(1,2)*A(2,3)*A(3,1) &
+                       + A(1,3)*A(2,1)*A(3,2) - A(1,3)*A(2,2)*A(3,1) )
+
+    ! --- Calculate the inverse of the matrix ---
+
+    invA(1,1) = +InvDet * ( A(2,2)*A(3,3) - A(2,3)*A(3,2) )
+    invA(2,1) = -InvDet * ( A(2,1)*A(3,3) - A(2,3)*A(3,1) )
+    invA(3,1) = +InvDet * ( A(2,1)*A(3,2) - A(2,2)*A(3,1) )
+    invA(1,2) = -InvDet * ( A(1,2)*A(3,3) - A(1,3)*A(3,2) )
+    invA(2,2) = +InvDet * ( A(1,1)*A(3,3) - A(1,3)*A(3,1) )
+    invA(3,2) = -InvDet * ( A(1,1)*A(3,2) - A(1,2)*A(3,1) )
+    invA(1,3) = +InvDet * ( A(1,2)*A(2,3) - A(1,3)*A(2,2) )
+    invA(2,3) = -InvDet * ( A(1,1)*A(2,3) - A(1,3)*A(2,1) )
+    invA(3,3) = +InvDet * ( A(1,1)*A(2,2) - A(1,2)*A(2,1) )
+
+    RETURN
+  END FUNCTION Inv3x3
+
+
+  ! --- End of auxiliary functions for standing accretion shock problem ---
 
 
   ! --- Auxiliary utilities for TOV problem ---
@@ -2361,269 +2769,6 @@ CONTAINS
   END FUNCTION f_E2
 
 
-  ! --- Auxiliary utilities for standing accretion shock problem ---
-
-
-  SUBROUTINE ApplyJumpConditions &
-    ( iX1_1, iNodeX1_1, X1_1, D_1, V_1, &
-      iX1_2, iNodeX1_2, X1_2, &
-      D_2, V_2, P_2, MassPNS, PolytropicConstant )
-
-    INTEGER,  INTENT(in)  :: iX1_1, iNodeX1_1, iX1_2, iNodeX1_2
-    REAL(DP), INTENT(in)  :: X1_1, X1_2, D_1, V_1, MassPNS
-    REAL(DP), INTENT(out) :: D_2, V_2, P_2, PolytropicConstant
-
-    REAL(DP) :: Alpha, Psi
-    REAL(DP) :: C1, C2, C3, a0, a1, a2, a3, a4, X1
-    REAL(DP) :: W
-
-    REAL(DP), PARAMETER :: ShockTolerance = 0.1_DP
-    LOGICAL             :: FoundShockVelocity = .FALSE.
-
-    ! --- Constants from three jump conditions ---
-
-    Alpha = LapseFunction  ( X1_1, MassPNS )
-    Psi   = ConformalFactor( X1_1, MassPNS )
-
-    C1 = D_1 * V_1 / Alpha
-
-    C2 = D_1 * SpeedOfLight**2 / Alpha**2 * ( V_1 / SpeedOfLight )**2
-
-    C3 = D_1 * SpeedOfLight**2 / Alpha**2 * V_1
-
-    ! --- Five constants for post-shock fluid-velocity ---
-
-    a4 = Psi**8 &
-          * One / ( Gamma_IDEAL - One )**2 * C3**2 / SpeedOfLight**6
-    a3 = -Two * Psi**8 &
-          * Gamma_IDEAL / ( Gamma_IDEAL - One )**2 * C2 * C3 / SpeedOfLight**4
-    a2 = Psi**4 &
-          / SpeedOfLight**2 * ( Psi**4 * Gamma_IDEAL**2 &
-          / ( Gamma_IDEAL - One )**2 * C2**2 + Two * One &
-          / ( Gamma_IDEAL - One ) &
-          * C3**2 / SpeedOfLight**2 + C1**2 * SpeedOfLight**2 )
-    a1 = -Two * Psi**4 &
-          * Gamma_IDEAL / ( Gamma_IDEAL - One ) * C2 * C3 / SpeedOfLight**2
-    a0 = One / SpeedOfLight**2 * ( C3**2 - C1**2 * SpeedOfLight**4 )
-
-    ! --- Newton-Raphson method for post-shock fluid-velocity ---
-
-    V_2 = Two * V_1
-
-    ! --- Ensure that shocked velocity is obtained ---
-
-    FoundShockVelocity = .FALSE.
-    DO WHILE( .NOT. FoundShockVelocity )
-
-      V_2 = Half * V_2
-      CALL NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V_2 )
-!!$      CALL Bisection_JumpConditions( a0, a1, a2, a3, a4, V_2 )
-
-      IF( ABS( V_2 - V_1 ) / ABS( V_1 ) .GT. ShockTolerance ) &
-        FoundShockVelocity = .TRUE.
-
-    END DO
-
-    ! --- Post-shock density, velocity, pressure, and polytropic constant ---
-
-    Psi = ConformalFactor( X1_2, MassPNS )
-    W   = LorentzFactor( Psi, V_2 )
-
-    D_2 = ABS( C1 ) * SQRT( One / V_2**2 - Psi**4 / SpeedOfLight**2 )
-
-    P_2 = ( Gamma_IDEAL - One ) / Gamma_IDEAL &
-            * ( C3 - D_2 * SpeedOfLight**2 * W**2 * V_2 ) / ( W**2 * V_2 )
-
-    PolytropicConstant = P_2 / D_2**( Gamma_IDEAL )
-
-  END SUBROUTINE ApplyJumpConditions
-
-
-  SUBROUTINE Bisection_JumpConditions( a0, a1, a2, a3, a4, V )
-
-    REAL(DP), INTENT(in)    :: a0, a1, a2, a3, a4
-    REAL(DP), INTENT(inout) :: V
-
-    REAL(DP) :: F, dV, Vmin, Vmax, Fmin, Fmax
-    LOGICAL  :: CONVERGED
-    INTEGER  :: ITERATION
-
-    INTEGER,  PARAMETER :: nMaxIter = 100
-    REAL(DP), PARAMETER :: ToldV = 1.0d-15
-    REAL(DP), PARAMETER :: EPS = 1.0e-15_DP
-
-    IF( V .LT. Zero )THEN
-
-      Vmin = V    + EPS
-      Vmax = +One - EPS
-
-    ELSE
-
-      Vmin = -One + EPS
-      Vmax = V    - EPS
-
-    END IF
-
-    Fmin = a4 * Vmin**4 + a3 * Vmin**3 + a2 * Vmin**2 + a1 * Vmin + a0
-    Fmax = a4 * Vmax**4 + a3 * Vmax**3 + a2 * Vmax**2 + a1 * Vmax + a0
-
-    IF( .NOT. Fmin * Fmax .LT. Zero )THEN
-
-      WRITE(*,*) 'Root not bracketed. Stopping...'
-      WRITE(*,*) 'Fmin = ', Fmin
-      WRITE(*,*) 'Fmax = ', Fmax
-      STOP
-
-    END IF
-
-    IF( Fmin .GT. Zero )THEN
-
-      V = Vmax
-      F = Fmax
-
-      Vmax = Vmin
-      Vmin = V
-
-      Fmax = Fmin
-      Fmin = F
-
-    END IF
-
-    ITERATION = 0
-    DO WHILE( ITERATION .LT. nMaxIter )
-
-      ITERATION = ITERATION + 1
-
-      V = ( Vmin + Vmax ) / Two
-
-      F = a4 * V**4 + a3 * V**3 + a2 * V**2 + a1 * V + a0
-
-      IF( ABS( V - Vmin ) / MAX( ABS( Vmax ), ABS( Vmin ) ) .LT. ToldV ) EXIT
-
-      IF( F .GT. Zero )THEN
-
-        Vmax = V
-        Fmax = F
-
-     ELSE
-
-        Vmin = V
-        Fmin = F
-
-     END IF
-
-    END DO
-
-!!$    WRITE(*,*) 'Converged at iteration ', ITERATION
-!!$    WRITE(*,*) '|F|:  ' , ABS( F )
-!!$    WRITE(*,*) 'dV/V: ', ABS( V - Vmax ) / ABS( Vmax )
-
-  END SUBROUTINE Bisection_JumpConditions
-
-
-  SUBROUTINE NewtonRaphson_JumpConditions( a0, a1, a2, a3, a4, V )
-
-    REAL(DP), INTENT(in)    :: a0, a1, a2, a3, a4
-    REAL(DP), INTENT(inout) :: V
-
-    REAL(DP) :: f, df, dV
-    LOGICAL  :: CONVERGED
-    INTEGER  :: ITERATION
-
-    INTEGER,  PARAMETER :: MAX_ITER = 10
-    REAL(DP), PARAMETER :: TOLERANCE = 1.0d-15
-
-    CONVERGED = .FALSE.
-    ITERATION = 0
-    DO WHILE( .NOT. CONVERGED .AND. ITERATION .LT. MAX_ITER )
-
-      ITERATION = ITERATION + 1
-
-      f  = a4 * V**4 + a3 * V**3 + a2 * V**2 + a1 * V + a0
-      df = Four * a4 * V**3 + Three * a3 * V**2 + Two * a2 * V + a1
-
-      dV = -f / df
-      V = V + dV
-
-      IF( ABS( dV / V ) .LT. TOLERANCE )THEN
-        CONVERGED = .TRUE.
-      END IF
-
-    END DO
-
-  END SUBROUTINE NewtonRaphson_JumpConditions
-
-
-  SUBROUTINE NewtonRaphson_PostShockVelocity &
-    ( Alpha, Psi, MassConstant, PolytropicConstant, &
-      MassPNS, AccretionRate, X1, V )
-
-    REAL(DP), INTENT(in)    :: Alpha, Psi, MassConstant, &
-                               PolytropicConstant, MassPNS, AccretionRate, X1
-    REAL(DP), INTENT(inout) :: V
-
-    REAL(DP) :: f, df, dV, W
-    INTEGER  :: ITERATION
-    LOGICAL  :: CONVERGED
-
-    INTEGER,  PARAMETER :: MAX_ITER = 20
-    REAL(DP), PARAMETER :: TOLERANCE = 1.0d-15
-
-    CONVERGED = .FALSE.
-    ITERATION = 0
-    DO WHILE( .NOT. CONVERGED .AND. ITERATION .LT. MAX_ITER )
-
-      ITERATION = ITERATION + 1
-
-      W = LorentzFactor( Psi, V )
-
-      f  = Gamma_IDEAL / ( Gamma_IDEAL - One ) &
-             * PolytropicConstant / SpeedOfLight**2 * ( MassConstant &
-             / ( Psi**6 * Alpha * X1**2 * W * V ) )**( Gamma_IDEAL - One ) &
-             - One / ( Alpha * W ) + One
-
-      df = -Gamma_IDEAL * PolytropicConstant / SpeedOfLight**2 &
-             * ( MassConstant &
-                 / ( Psi**6 * Alpha * X1**2 * W * V ) )**( Gamma_IDEAL - One ) &
-                 * ( Psi**4 * V / SpeedOfLight**2 * W**2 + One / V ) &
-                 + W / Alpha * Psi**4 * V / SpeedOfLight**2
-
-      dV = -f / df
-      V = V + dV
-
-      IF( ABS( dV / V ) .LT. TOLERANCE ) &
-        CONVERGED = .TRUE.
-
-    END DO
-
-  END SUBROUTINE NewtonRaphson_PostShockVelocity
-
-
-  REAL(DP) FUNCTION LapseFunction( R, M )
-
-    REAL(DP), INTENT(in) :: R, M
-
-    ! --- Schwarzschild Metric in Isotropic Coordinates ---
-
-    LapseFunction = ABS( ( MAX( ABS( R ), SqrtTiny ) - Half * M ) &
-                       / ( MAX( ABS( R ), SqrtTiny ) + Half * M ) )
-
-    RETURN
-  END FUNCTION LapseFunction
-
-
-  REAL(DP) FUNCTION ConformalFactor( R, M )
-
-    REAL(DP), INTENT(in) :: R, M
-
-    ! --- Schwarzschild Metric in Isotropic Coordinates ---
-
-    ConformalFactor = One + Half * M / MAX( ABS( R ), SqrtTiny )
-
-    RETURN
-  END FUNCTION ConformalFactor
-
-
   REAL(DP) FUNCTION LorentzFactor( Psi, V )
 
     REAL(DP), INTENT(in) :: Psi, V
@@ -2634,7 +2779,10 @@ CONTAINS
   END FUNCTION LorentzFactor
 
 
-  ! --- Auxiliary functions/subroutines for computine left state ---
+  ! --- End of auxiliary utilities for TOV problem ---
+
+
+  ! --- Auxiliary functions/subroutines for computing left state ---
 
 
   SUBROUTINE ComputeLeftState( Vs, DR, VR, PR, DL, VL, PL )
@@ -2798,6 +2946,9 @@ CONTAINS
 
     RETURN
   END FUNCTION PostShockVelocity
+
+
+  ! --- End of auxiliary functions/subroutines for computing left state ---
 
 
 END MODULE InitializationModule_Relativistic

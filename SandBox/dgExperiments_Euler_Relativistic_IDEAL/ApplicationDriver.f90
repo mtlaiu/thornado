@@ -129,24 +129,24 @@ PROGRAM ApplicationDriver
   REAL(DP) :: Vmax, LorentzFactor
 
   ! --- Standing accretion shock ---
-  REAL(DP), ALLOCATABLE :: FluidFieldParameters(:)
-  REAL(DP)              :: MassPNS, RadiusPNS, ShockRadius, &
-                           AccretionRate, MachNumber
-  LOGICAL               :: ApplyPerturbation
-  INTEGER               :: PerturbationOrder
-  REAL(DP)              :: PerturbationAmplitude, &
-                           rPerturbationInner, rPerturbationOuter
-  REAL(DP)              :: Power(0:2)
+  REAL(DP) :: MassPNS, RadiusPNS, ShockRadius, &
+              AccretionRate, PolytropicConstant
+  LOGICAL  :: ApplyPerturbation
+  INTEGER  :: PerturbationOrder
+  REAL(DP) :: PerturbationAmplitude, &
+              rPerturbationInner, rPerturbationOuter
+  REAL(DP) :: Power(0:2)
 
   ! --- Yahil Collapse ---
   REAL(DP) :: CentralDensity, CentralPressure, CoreRadius, CollapseTime
 
-  LOGICAL  :: WriteGF = .FALSE., WriteFF = .TRUE.
+  LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
   LOGICAL  :: ActivateUnits = .FALSE.
   REAL(DP) :: Timer_Evolution
 
   REAL(DP), ALLOCATABLE :: U_Poseidon(:,:,:,:,:)
 
+  swX = [ 0, 0, 0 ]
   RestartFileNumber = -1
 
   t = 0.0_DP
@@ -181,13 +181,14 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 64, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      nX  = [ 64, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
     CASE( 'Advection2D' )
 
-      AdvectionProfile = 'SineWaveX1'
+      AdvectionProfile = 'SineWaveX1X2'
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 10.0_DP
@@ -195,9 +196,10 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX = [ 32, 32, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      nX  = [ 32, 32, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ One / SQRT( Two ), One / SQRT( Two ), 1.0_DP ]
 
     CASE( 'RiemannProblem' )
 
@@ -262,6 +264,7 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'CARTESIAN'
 
       nX  = [ 128, 1, 1 ]
+      swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -288,6 +291,7 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'CARTESIAN'
 
       nX  = [ 64, 64, 1 ]
+      swX = [ 1, 1, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -298,14 +302,13 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'SPHERICAL'
 
       Gamma = 5.0_DP / 3.0_DP
-
-      nX = [ 128, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 2.0_DP, Pi, TwoPi ]
-
+      t_end = 5.0d-1
       bcX = [ 2, 0, 0 ]
 
-      t_end = 5.0d-1
+      nX  = [ 256, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 2.0_DP, Pi, TwoPi ]
 
       WriteGF = .TRUE.
 
@@ -317,14 +320,13 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'SPHERICAL'
 
       Gamma = 4.0_DP / 3.0_DP
-
-      nX = [ 256, 1, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.2_DP, Pi, TwoPi ]
-
+      t_end = 1.0d0
       bcX = [ 3, 0, 0 ]
 
-      t_end = 1.0d0
+      nX  = [ 256, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.2_DP, Pi, TwoPi ]
 
       WriteGF = .TRUE.
 
@@ -333,40 +335,38 @@ PROGRAM ApplicationDriver
        CoordinateSystem = 'CARTESIAN'
 
        Gamma = 4.0d0 / 3.0d0
+       t_end = 1.0d-1
+       bcX = [ 1, 1, 0 ]
 
        nX = [ 16, 32, 1 ]
+      swX = [ 1, 1, 0 ]
        xL = [ -0.5d0, -1.0d0, 0.0d0 ]
        xR = [  0.5d0,  1.0d0, 1.0d0 ]
 
-       bcX = [ 1, 1, 0 ]
-
-       t_end = 1.0d-1
-
     CASE( 'StandingAccretionShock' )
 
-      CoordinateSystem = 'SPHERICAL'
+      Gamma = 4.0e0_DP / 3.0e0_DP
+      t_end = 3.0d2 * Millisecond
+      bcX = [ 11, 0, 0 ]
 
-      MassPNS       = 1.4_DP * SolarMass
-      RadiusPNS     = 40.0_DP * Kilometer
-      ShockRadius   = 180.0_DP * Kilometer
-      AccretionRate = 0.3_DP * SolarMass / Second
-      MachNumber    = 10.0_DP
-
+      MassPNS            = 1.4_DP    * SolarMass
+      RadiusPNS          = 40.0_DP   * Kilometer
+      ShockRadius        = 180.0_DP  * Kilometer
+      AccretionRate      = 0.3_DP    * ( SolarMass / Second )
+      PolytropicConstant = 2.0e14_DP * ( Erg / Centimeter**3 &
+                                         / ( Gram / Centimeter**3 )**( Gamma ) )
       ApplyPerturbation     = .TRUE.
-      PerturbationOrder     = 1
+      PerturbationOrder     = 0
       PerturbationAmplitude = 0.04_DP
       rPerturbationInner    = 260.0_DP * Kilometer
       rPerturbationOuter    = 280.0_DP * Kilometer
 
-      Gamma = 4.0d0 / 3.0d0
+      nX  = [ 960, 1, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ RadiusPNS, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0e3_DP * Kilometer, Pi, TwoPi ]
 
-      nX = [ 128, 16, 1 ]
-      xL = [ RadiusPNS, 0.0_DP, 0.0_DP ]
-      xR = [ Two * ShockRadius, Pi, TwoPi ]
-
-      bcX = [ 11, 0, 0 ]
-
-      t_end = 3.0d2 * Millisecond
+      CoordinateSystem = 'SPHERICAL'
 
       WriteGF = .TRUE.
 
@@ -381,14 +381,13 @@ PROGRAM ApplicationDriver
        CoordinateSystem = 'SPHERICAL'
 
        Gamma = 2.0_DP
+       t_end = 1.0e1_DP * Millisecond
+       bcX   = [ 30, 0, 0 ]
 
-       nX = [ 128, 1, 1 ]
-       xL = [ Zero    , Zero, Zero  ]
+       nX = [ 128                 , 1   , 1     ]
+      swX = [ 1                   , 0   , 0     ]
+       xL = [ Zero                , Zero, Zero  ]
        xR = [ 1.0e1_DP * Kilometer,  Pi , TwoPi ]
-
-       bcX = [ 30, 0, 0 ]
-
-       t_end = 1.0e+1 * Millisecond
 
       WriteGF = .TRUE.
 
@@ -396,25 +395,24 @@ PROGRAM ApplicationDriver
 
     CASE( 'YahilCollapse' )
 
-       SelfGravity = .TRUE.
+      SelfGravity = .TRUE.
 
-       CoordinateSystem = 'SPHERICAL'
+      CoordinateSystem = 'SPHERICAL'
 
-       Gamma = 1.30_DP
+      Gamma = 1.30_DP
+      t_end = CollapseTime - 0.5_DP * Millisecond
+      bcX = [ 30, 0, 0 ]
 
-       CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
-       CentralPressure = 6.0e27_DP * Erg / Centimeter**3
-       CoreRadius      = 1.0e5_DP  * Kilometer
-       CollapseTime    = 1.50e2_DP * Millisecond
+      CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
+      CentralPressure = 6.0e27_DP * Erg / Centimeter**3
+      CoreRadius      = 1.0e4_DP  * Kilometer
+      CollapseTime    = 1.50e2_DP * Millisecond
 
-       nX    = [ 256                 , 1     , 1      ]
-       xL    = [ Zero                , Zero  , Zero   ]
-       xR    = [ CoreRadius          ,  Pi   , TwoPi  ]
-       ZoomX = [ 1.032034864238313_DP, 1.0_DP, 1.0_DP ]
-
-       bcX = [ 30, 0, 0 ]
-
-       t_end = CollapseTime - 0.5_DP * Millisecond
+      nX    = [ 256                 , 1     , 1      ]
+      swX   = [ 1                   , 0     , 0      ]
+      xL    = [ Zero                , Zero  , Zero   ]
+      xR    = [ CoreRadius          , Pi    , TwoPi  ]
+      ZoomX = [ 1.032034864238313_DP, 1.0_DP, 1.0_DP ]
 
       WriteGF = .TRUE.
 
@@ -440,35 +438,39 @@ PROGRAM ApplicationDriver
 
   END SELECT
 
+  ! --- DG ---
+
   nNodes = 2
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
-  BetaTVD = 1.75d0
-  BetaTVB = 0.0d0
+  ! --- Time Stepping ---
 
-  UseSlopeLimiter           = .TRUE.
-  SlopeTolerance            = 1.0d-6
-  UseCharacteristicLimiting = .TRUE.
-
-  UseTroubledCellIndicator  = .TRUE.
-
-  SlopeLimiterMethod        = 'TVD'
-
-  LimiterThresholdParameter = 0.01_DP
-
-  UseConservativeCorrection = .TRUE.
-
-  UsePositivityLimiter = .TRUE.
-  Min_1 = 1.0d-13
-  Min_2 = 1.0d-13
-
-  nStagesSSPRK = nNodes
+  nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
-  ! --- Cockburn & Shu, (2001), JSC, 16, 173 ---
-  CFL = 0.5_DP
+  CFL = 0.5_DP ! Cockburn & Shu, (2001), JSC, 16, 173
+
+  ! --- Slope Limiter ---
+
+  UseSlopeLimiter           = .TRUE.
+  SlopeLimiterMethod        = 'TVD'
+  BetaTVD                   = 1.75d0
+  BetaTVB                   = 0.0d0
+  SlopeTolerance            = 1.0d-6
+  UseCharacteristicLimiting = .TRUE.
+  UseTroubledCellIndicator  = .TRUE.
+  LimiterThresholdParameter = 0.03_DP
+  UseConservativeCorrection = .TRUE.
+
+  ! --- Positivity Limiter ---
+
+  UsePositivityLimiter = .TRUE.
+  Min_1                = 1.0d-13
+  Min_2                = 1.0d-13
+
+  ! === End of User Input ===
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -476,15 +478,13 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 1, 1 ], &
+             = swX, &
            bcX_Option &
              = bcX, &
            xL_Option &
              = xL, &
            xR_Option &
              = xR, &
-           ZoomX_Option &
-             = ZoomX, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -557,7 +557,7 @@ PROGRAM ApplicationDriver
            MassPNS_Option               = MassPNS, &
            ShockRadius_Option           = ShockRadius, &
            AccretionRate_Option         = AccretionRate, &
-           MachNumber_Option            = MachNumber, &
+           PolytropicConstant_Option    = PolytropicConstant, &
            ApplyPerturbation_Option     = ApplyPerturbation, &
            PerturbationOrder_Option     = PerturbationOrder, &
            PerturbationAmplitude_Option = PerturbationAmplitude, &
@@ -575,7 +575,7 @@ PROGRAM ApplicationDriver
   END IF
 
   iCycleD = 10
-!!$  iCycleW = 1; dt_wrt = -1.0d0
+!!$  iCycleW = 10; dt_wrt = -1.0d0
   dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
@@ -633,8 +633,6 @@ PROGRAM ApplicationDriver
 
   iCycle = 0
   Timer_Evolution = MPI_WTIME()
-!  DO WHILE( iCycle < 3)
-!    PRINT*,"Modified While Loop in ApplicationDriver",iCycle   ! Added by Nick, for testing.
   DO WHILE( t .LT. t_end )
 
     iCycle = iCycle + 1
@@ -730,17 +728,17 @@ PROGRAM ApplicationDriver
       END IF
     END IF
 
-    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
-
-      CALL ComputeFromConserved_Euler_Relativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-      CALL ComputeAccretionShockDiagnostics &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
-
-      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
-
-    END IF
+!!$    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
+!!$
+!!$      CALL ComputeFromConserved_Euler_Relativistic &
+!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+!!$
+!!$      CALL ComputeAccretionShockDiagnostics &
+!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
+!!$
+!!$      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+!!$
+!!$    END IF
 
   END DO
 
@@ -808,5 +806,16 @@ PROGRAM ApplicationDriver
   CALL TimersStop_Euler( Timer_Euler_Finalize )
 
   CALL FinalizeTimers_Euler
+
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git info'
+  WRITE(*,'(2x,A)') '--------'
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git describe --tags:'
+  CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
+  CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+  WRITE(*,*)
 
 END PROGRAM ApplicationDriver
