@@ -23,8 +23,6 @@ MODULE GravitySolutionModule_CFA_Poseidon
     MeshX, &
     NodeCoordinate
   USE GeometryComputationModule, ONLY: &
-    LapseFunction, &
-    ConformalFactor, &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
     iGF_Phi_N,    &
@@ -162,13 +160,12 @@ CONTAINS
              Right_Limit  = +Half )
 
     ! Set Boundary Values !
-    BaryonMass         = 4.733_DP * SolarMass
-    Boundary_Potential = -BaryonMass / xR(1)
+    Boundary_Potential = - ( 4.733_DP * SolarMass ) / xR(1)
     Psi_BC             = One + Half*Boundary_Potential
     AlphaPsi_BC        = One - Half*Boundary_Potential
 
-!!$    Psi_BC      = One
-!!$    AlphaPsi_BC = One
+!    Psi_BC      = One
+!    AlphaPsi_BC = One
 
     INNER_BC_TYPES = [ "N", "N", "N", "N", "N" ]
     OUTER_BC_TYPES = [ "D", "D", "D", "D", "D" ]
@@ -258,9 +255,6 @@ CONTAINS
 
 #endif
 
-    CALL SetBoundaryConditions &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, BaryonMass )
-
   END SUBROUTINE SolveGravity_CFA_Poseidon
 
 
@@ -309,30 +303,19 @@ CONTAINS
         iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
         jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
 
-        G(iNodeX,0,iX2,iX3,iGF_Alpha) &
-          = G(jNodeX,1,iX2,iX3,iGF_Alpha)
-
-        G(iNodeX,0,iX2,iX3,iGF_Psi) &
-          = G(jNodeX,1,iX2,iX3,iGF_Psi)
-
-        G(iNodeX,0,iX2,iX3,iGF_Beta_1) &
-          = -G(jNodeX,1,iX2,iX3,iGF_Beta_1)
+        G(iNodeX,0,iX2,iX3,iGF_Phi_N) &
+          = G(jNodeX,1,iX2,iX3,iGF_Phi_N)
 
         ! --- Outer Boundary: Dirichlet ---
 
         X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNodeX1 )
 
-        G(iNodeX,nX(1)+1,iX2,iX3,iGF_Alpha) &
-          = LapseFunction( X1, BaryonMass )
-
-        G(iNodeX,nX(1)+1,iX2,iX3,iGF_Psi) &
-          = ConformalFactor( X1, BaryonMass )
+        G(iNodeX,nX(1)+1,iX2,iX3,iGF_Phi_N) &
+          = - BaryonMass / X1
 
       END DO
       END DO
       END DO
-
-      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
 
     END DO
     END DO
