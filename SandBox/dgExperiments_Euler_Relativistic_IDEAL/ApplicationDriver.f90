@@ -441,13 +441,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 2
+  nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 2
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -462,7 +462,7 @@ PROGRAM ApplicationDriver
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
   UseTroubledCellIndicator  = .TRUE.
-  LimiterThresholdParameter = 0.03_DP
+  LimiterThresholdParameter = 0.015_DP
   UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
@@ -573,13 +573,15 @@ PROGRAM ApplicationDriver
 
   IF( RestartFileNumber .GE. 0 )THEN
 
-    CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
+    CALL ReadFieldsHDF &
+           ( RestartFileNumber, t, &
+             ReadFF_Option = .TRUE., ReadGF_Option = .TRUE. )
 
   END IF
 
-  iCycleD = 1
-  iCycleW = 1; dt_wrt = -1.0d0
-!!$  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+  iCycleD = 10
+!!$  iCycleW = 1; dt_wrt = -1.0d0
+  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
