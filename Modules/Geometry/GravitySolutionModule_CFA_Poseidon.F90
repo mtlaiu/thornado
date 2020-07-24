@@ -256,6 +256,9 @@ CONTAINS
     END DO ! iX2
     END DO ! iX3
 
+    CALL SetBoundaryConditions &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, BaryonMass )
+
 #endif
 
   END SUBROUTINE SolveGravity_CFA_Poseidon
@@ -290,7 +293,9 @@ CONTAINS
     INTEGER  :: iX2, iX3
     INTEGER  :: iNodeX1, jNodeX1, iNodeX2, iNodeX3
     INTEGER  :: iNodeX, jNodeX
-    REAL(DP) :: X1
+    REAL(DP) :: X1, X2
+
+    X2 = Half * Pi
 
     DO iX3 = 1, nX(3)
     DO iX2 = 1, nX(2)
@@ -315,6 +320,15 @@ CONTAINS
         G(iNodeX,0,iX2,iX3,iGF_Beta_1) &
           = -G(jNodeX,1,iX2,iX3,iGF_Beta_1)
 
+        G(iNodeX,0,iX2,iX3,iGF_h_1) &
+          = G(jNodeX,1,iX2,iX3,iGF_h_1)
+
+        G(iNodeX,0,iX2,iX3,iGF_h_2) &
+          = G(jNodeX,1,iX2,iX3,iGF_h_2)
+
+        G(iNodeX,0,iX2,iX3,iGF_h_3) &
+          = G(jNodeX,1,iX2,iX3,iGF_h_3)
+
         ! --- Outer Boundary: Dirichlet ---
 
         X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNodeX1 )
@@ -328,9 +342,21 @@ CONTAINS
         G(iNodeX,nX(1)+1,iX2,iX3,iGF_Beta_1) &
           = Zero
 
+        G(iNodeX,nX(1)+1,iX2,iX3,iGF_h_1) &
+          = G(iNodeX,nX(1)+1,iX2,iX3,iGF_Psi)**2
+
+        G(iNodeX,nX(1)+1,iX2,iX3,iGF_h_2) &
+          = G(iNodeX,nX(1)+1,iX2,iX3,iGF_Psi)**2 * X1
+
+        G(iNodeX,nX(1)+1,iX2,iX3,iGF_h_3) &
+          = G(iNodeX,nX(1)+1,iX2,iX3,iGF_Psi)**2 * X1 * SIN( X2 )
+
       END DO
       END DO
       END DO
+
+      CALL ComputeGeometryX_FromScaleFactors( G(:,0      ,iX2,iX3,:) )
+      CALL ComputeGeometryX_FromScaleFactors( G(:,nX(1)+1,iX2,iX3,:) )
 
     END DO
     END DO
