@@ -60,8 +60,7 @@ MODULE GravitySolutionModule_CFA_Poseidon
     Initialize_Flat_Space_Guess_Values
 
   USE Poseidon_Calculate_Results_Module, ONLY : &
-    Calc_1D_CFA_Values, &
-    Calc_3D_Values_At_Location
+    Calc_1D_CFA_Values
 
   ! -----------------------------------------
 
@@ -181,7 +180,7 @@ CONTAINS
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
 
-    CALL Initialize_Flat_Space_Guess_Values()
+    CALL Initialize_Flat_Space_Guess_Values() ! Possibly move this to init call 
 
     CALL Poseidon_Run()
 
@@ -208,28 +207,6 @@ CONTAINS
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
         X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
         X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
-
-!        CALL Calc_3D_Values_At_Location &
-!               ( X1, X2, X3,                       &
-!                 G(iNodeX,iX1,iX2,iX3,iGF_Psi),    &
-!                 G(iNodeX,iX1,iX2,iX3,iGF_Alpha),  &
-!                 G(iNodeX,iX1,iX2,iX3,iGF_Beta_1), &
-!                 G(iNodeX,iX1,iX2,iX3,iGF_Beta_2), &
-!                 G(iNodeX,iX1,iX2,iX3,iGF_Beta_3)  )
-!
-!        G(iNodeX,iX1,iX2,iX3,iGF_h_1) &
-!          = G(iNodeX,iX1,iX2,iX3,iGF_Psi)**2
-!        G(iNodeX,iX1,iX2,iX3,iGF_h_2) &
-!          = G(iNodeX,iX1,iX2,iX3,iGF_Psi)**2 * X1
-!        G(iNodeX,iX1,iX2,iX3,iGF_h_3) &
-!          = G(iNodeX,iX1,iX2,iX3,iGF_Psi)**2 * X1 * SIN( X2 )
-!
-!        PRINT*, "Alpha", Tmp_Lapse  (iNodeX,iX1,iX2,iX3), &
-!                         G          (iNodeX,iX1,iX2,iX3,iGF_Alpha)
-!        PRINT*, "Psi"  , Tmp_ConFact(iNodeX,iX1,iX2,iX3), &
-!                         G          (iNodeX,iX1,iX2,iX3,iGF_Psi)
-!        PRINT*, "Beta1", Tmp_Shift  (iNodeX,iX1,iX2,iX3), &
-!                         G          (iNodeX,iX1,iX2,iX3,iGF_Beta_1)
 
         G(iNodeX,iX1,iX2,iX3,iGF_Alpha)  &
           = Tmp_Lapse  (iNodeX,iX1,iX2,iX3)
