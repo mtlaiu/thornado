@@ -104,7 +104,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
   LOGICAL       :: OPTIMIZE = .FALSE.
-  LOGICAL       :: SuppressTally = .TRUE.
+  LOGICAL       :: SuppressTally = .FALSE.
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -442,13 +442,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 3
+  nNodes = 2
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -825,6 +825,9 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
   WRITE(*,'(2x,A)') 'git info'
   WRITE(*,'(2x,A)') '--------'
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git branch:'
+  CALL EXECUTE_COMMAND_LINE( 'git branch' )
   WRITE(*,*)
   WRITE(*,'(2x,A)') 'git describe --tags:'
   CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
