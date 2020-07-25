@@ -1,36 +1,36 @@
 PROGRAM ApplicationDriver
 
-  USE KindModule,                                       ONLY: &
+  USE KindModule, ONLY: &
     DP,   &
     Zero, &
     One,  &
     Two,  &
     Pi,   &
     TwoPi
-  USE ProgramInitializationModule,                      ONLY: &
+  USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
-  USE ReferenceElementModuleX,                          ONLY: &
+  USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
-  USE ReferenceElementModuleX_Lagrange,                 ONLY: &
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
-  USE EquationOfStateModule,                            ONLY: &
+  USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
-  USE ProgramHeaderModule,                              ONLY: &
+  USE ProgramHeaderModule, ONLY: &
     iX_B0,  &
     iX_B1,  &
     iX_E0,  &
     iX_E1,  &
     nDimsX, &
     nDOFX
-  USE GeometryComputationModule,                        ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
-  USE InitializationModule_Relativistic,                ONLY: &
+  USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic
-  USE Euler_SlopeLimiterModule_Relativistic_IDEAL,      ONLY: &
+  USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_IDEAL, &
     FinalizeSlopeLimiter_Euler_Relativistic_IDEAL,   &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
@@ -38,14 +38,14 @@ PROGRAM ApplicationDriver
     InitializePositivityLimiter_Euler_Relativistic_IDEAL, &
     FinalizePositivityLimiter_Euler_Relativistic_IDEAL,   &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
-  USE Euler_UtilitiesModule_Relativistic,               ONLY: &
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
-  USE InputOutputModuleHDF,                             ONLY: &
+  USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
     ReadFieldsHDF,  &
     WriteAccretionShockDiagnosticsHDF
-  USE FluidFieldsModule,                                ONLY: &
+  USE FluidFieldsModule, ONLY: &
     nCF, &
     nPF, &
     nAF, &
@@ -53,33 +53,33 @@ PROGRAM ApplicationDriver
     uPF, &
     uAF, &
     uDF
-  USE GeometryFieldsModule,                             ONLY: &
+  USE GeometryFieldsModule, ONLY: &
     nGF, &
     uGF
-  USE GravitySolutionModule_CFA_Poseidon,               ONLY: &
+  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
     InitializeGravitySolver_CFA_Poseidon, &
     FinalizeGravitySolver_CFA_Poseidon,   &
     SolveGravity_CFA_Poseidon
-  USE Euler_dgDiscretizationModule,                     ONLY: &
+  USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
-  USE TimeSteppingModule_SSPRK,                         ONLY: &
+  USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK,   &
     UpdateFluid_SSPRK
-  USE UnitsModule,                                      ONLY: &
+  USE UnitsModule, ONLY: &
     Kilometer,   &
     SolarMass,   &
     Second,      &
     Millisecond, &
     Centimeter,  &
-    Erg,         &
     Gram,        &
+    Erg,         &
     UnitsDisplay
-  USE Euler_TallyModule_Relativistic_IDEAL,             ONLY: &
+  USE Euler_TallyModule_Relativistic_IDEAL, ONLY: &
     InitializeTally_Euler_Relativistic_IDEAL, &
     FinalizeTally_Euler_Relativistic_IDEAL,   &
     ComputeTally_Euler_Relativistic_IDEAL
-  USE TimersModule_Euler,                               ONLY: &
+  USE TimersModule_Euler, ONLY: &
     TimeIt_Euler,            &
     InitializeTimers_Euler,  &
     FinalizeTimers_Euler,    &
@@ -159,7 +159,7 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-!  ProgramName = 'Advection'
+  ProgramName = 'Advection'
 !  ProgramName = 'Advection2D'
 !  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
@@ -168,7 +168,7 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'KelvinHelmholtzInstability'
 !  ProgramName = 'StandingAccretionShock'
 !  ProgramName = 'StaticTOV'
-  ProgramName = 'YahilCollapse'
+!  ProgramName = 'YahilCollapse'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -441,13 +441,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 2
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 2
+  nStagesSSPRK = 1
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -462,7 +462,7 @@ PROGRAM ApplicationDriver
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
   UseTroubledCellIndicator  = .TRUE.
-  LimiterThresholdParameter = 0.015_DP
+  LimiterThresholdParameter = 0.03_DP
   UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
@@ -505,7 +505,7 @@ PROGRAM ApplicationDriver
 
     ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
                                  iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),1:7) )
+                                 iX_B0(3):iX_E0(3),1:5) )
 
     CALL InitializeGravitySolver_CFA_Poseidon
 
@@ -573,15 +573,13 @@ PROGRAM ApplicationDriver
 
   IF( RestartFileNumber .GE. 0 )THEN
 
-    CALL ReadFieldsHDF &
-           ( RestartFileNumber, t, &
-             ReadFF_Option = .TRUE., ReadGF_Option = .TRUE. )
+    CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
 
   END IF
 
-  iCycleD = 10
-!!$  iCycleW = 1; dt_wrt = -1.0d0
-  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+  iCycleD = 1
+  iCycleW = 1; dt_wrt = -1.0d0
+!!$  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -639,11 +637,6 @@ PROGRAM ApplicationDriver
   iCycle = 0
   Timer_Evolution = MPI_WTIME()
   DO WHILE( t .LT. t_end )
-
-CALL ComputeFromConserved_Euler_Relativistic &
-       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-if(any(upf(:,:,:,:,1).gt.1.0e15_DP*gram/centimeter**3))exit
 
     iCycle = iCycle + 1
 

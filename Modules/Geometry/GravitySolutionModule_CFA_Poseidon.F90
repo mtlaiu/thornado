@@ -6,8 +6,7 @@ MODULE GravitySolutionModule_CFA_Poseidon
     FourPi, &
     Zero,   &
     Half,   &
-    One,    &
-    Two
+    One
   USE ProgramHeaderModule, ONLY: &
     nX,      &
     nNodesX, &
@@ -24,8 +23,6 @@ MODULE GravitySolutionModule_CFA_Poseidon
     MeshX, &
     NodeCoordinate
   USE GeometryComputationModule, ONLY: &
-    LapseFunction,   &
-    ConformalFactor, &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
     iGF_Phi_N,    &
@@ -61,7 +58,8 @@ MODULE GravitySolutionModule_CFA_Poseidon
     Initialize_Flat_Space_Guess_Values
 
   USE Poseidon_Calculate_Results_Module, ONLY : &
-    Calc_1D_CFA_Values
+    Calc_1D_CFA_Values, &
+    Calc_3D_Values_At_Location
 
   ! -----------------------------------------
 
@@ -131,7 +129,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
-    REAL(DP)         :: Psi_BC, AlphaPsi_BC, GravitationalMass
+    REAL(DP)         :: Boundary_Potential, Psi_BC, AlphaPsi_BC, BaryonMass
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
     REAL(DP)         :: Tmp_Lapse  (nDOFX,nX(1),nX(2),nX(3)), &
@@ -161,13 +159,13 @@ CONTAINS
              Left_Limit   = -Half,            &
              Right_Limit  = +Half )
 
-    ! --- Set Boundary Values ---
+    ! Set Boundary Values !
+    Boundary_Potential = - ( 4.733_DP * SolarMass ) / xR(1)
+    Psi_BC             = One + Half*Boundary_Potential
+    AlphaPsi_BC        = One - Half*Boundary_Potential
 
-    CALL ComputeGravitationalMass &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GravitationalMass )
-
-    Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
-    AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
+!    Psi_BC      = One
+!    AlphaPsi_BC = One
 
     INNER_BC_TYPES = [ "N", "N", "N", "N", "N" ]
     OUTER_BC_TYPES = [ "D", "D", "D", "D", "D" ]
@@ -208,6 +206,28 @@ CONTAINS
         X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
         X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
 
+!        CALL Calc_3D_Values_At_Location &
+!               ( X1, X2, X3,                       &
+!                 G(iNodeX,iX1,iX2,iX3,iGF_Psi),    &
+!                 G(iNodeX,iX1,iX2,iX3,iGF_Alpha),  &
+!                 G(iNodeX,iX1,iX2,iX3,iGF_Beta_1), &
+!                 G(iNodeX,iX1,iX2,iX3,iGF_Beta_2), &
+!                 G(iNodeX,iX1,iX2,iX3,iGF_Beta_3)  )
+!
+!        G(iNodeX,iX1,iX2,iX3,iGF_h_1) &
+!          = G(iNodeX,iX1,iX2,iX3,iGF_Psi)**2
+!        G(iNodeX,iX1,iX2,iX3,iGF_h_2) &
+!          = G(iNodeX,iX1,iX2,iX3,iGF_Psi)**2 * X1
+!        G(iNodeX,iX1,iX2,iX3,iGF_h_3) &
+!          = G(iNodeX,iX1,iX2,iX3,iGF_Psi)**2 * X1 * SIN( X2 )
+!
+!        PRINT*, "Alpha", Tmp_Lapse  (iNodeX,iX1,iX2,iX3), &
+!                         G          (iNodeX,iX1,iX2,iX3,iGF_Alpha)
+!        PRINT*, "Psi"  , Tmp_ConFact(iNodeX,iX1,iX2,iX3), &
+!                         G          (iNodeX,iX1,iX2,iX3,iGF_Psi)
+!        PRINT*, "Beta1", Tmp_Shift  (iNodeX,iX1,iX2,iX3), &
+!                         G          (iNodeX,iX1,iX2,iX3,iGF_Beta_1)
+
         G(iNodeX,iX1,iX2,iX3,iGF_Alpha)  &
           = Tmp_Lapse  (iNodeX,iX1,iX2,iX3)
         G(iNodeX,iX1,iX2,iX3,iGF_Psi)    &
@@ -233,46 +253,41 @@ CONTAINS
     END DO ! iX2
     END DO ! iX3
 
-    CALL SetBoundaryConditions &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, GravitationalMass )
-
 #endif
 
   END SUBROUTINE SolveGravity_CFA_Poseidon
 
 
   SUBROUTINE SetBoundaryConditions &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, BaryonMass )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      Mass
+      BaryonMass
 
     CALL SetBoundaryConditions_X1 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, BaryonMass )
 
   END SUBROUTINE SetBoundaryConditions
 
 
   SUBROUTINE SetBoundaryConditions_X1 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mass )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, BaryonMass )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      Mass
+      BaryonMass
 
     INTEGER  :: iX2, iX3
     INTEGER  :: iNodeX1, jNodeX1, iNodeX2, iNodeX3
     INTEGER  :: iNodeX, jNodeX
-    REAL(DP) :: X1, X2
-
-    X2 = Half * Pi
+    REAL(DP) :: X1
 
     DO iX3 = 1, nX(3)
     DO iX2 = 1, nX(2)
@@ -288,52 +303,19 @@ CONTAINS
         iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
         jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
 
-        G(iNodeX,0,iX2,iX3,iGF_Alpha) &
-          = G(jNodeX,1,iX2,iX3,iGF_Alpha)
-
-        G(iNodeX,0,iX2,iX3,iGF_Psi) &
-          = G(jNodeX,1,iX2,iX3,iGF_Psi)
-
-        G(iNodeX,0,iX2,iX3,iGF_Beta_1) &
-          = -G(jNodeX,1,iX2,iX3,iGF_Beta_1)
-
-        G(iNodeX,0,iX2,iX3,iGF_h_1) &
-          = G(jNodeX,1,iX2,iX3,iGF_h_1)
-
-        G(iNodeX,0,iX2,iX3,iGF_h_2) &
-          = G(jNodeX,1,iX2,iX3,iGF_h_2)
-
-        G(iNodeX,0,iX2,iX3,iGF_h_3) &
-          = G(jNodeX,1,iX2,iX3,iGF_h_3)
+        G(iNodeX,0,iX2,iX3,iGF_Phi_N) &
+          = G(jNodeX,1,iX2,iX3,iGF_Phi_N)
 
         ! --- Outer Boundary: Dirichlet ---
 
         X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNodeX1 )
 
-        G(iNodeX,nX(1)+1,iX2,iX3,iGF_Alpha) &
-          = LapseFunction( X1, Mass )
-
-        G(iNodeX,nX(1)+1,iX2,iX3,iGF_Psi) &
-          = ConformalFactor( X1, Mass )
-
-        G(iNodeX,nX(1)+1,iX2,iX3,iGF_Beta_1) &
-          = Zero
-
-        G(iNodeX,nX(1)+1,iX2,iX3,iGF_h_1) &
-          = G(iNodeX,nX(1)+1,iX2,iX3,iGF_Psi)**2
-
-        G(iNodeX,nX(1)+1,iX2,iX3,iGF_h_2) &
-          = G(iNodeX,nX(1)+1,iX2,iX3,iGF_Psi)**2 * X1
-
-        G(iNodeX,nX(1)+1,iX2,iX3,iGF_h_3) &
-          = G(iNodeX,nX(1)+1,iX2,iX3,iGF_Psi)**2 * X1 * SIN( X2 )
+        G(iNodeX,nX(1)+1,iX2,iX3,iGF_Phi_N) &
+          = - BaryonMass / X1
 
       END DO
       END DO
       END DO
-
-      CALL ComputeGeometryX_FromScaleFactors( G(:,0      ,iX2,iX3,:) )
-      CALL ComputeGeometryX_FromScaleFactors( G(:,nX(1)+1,iX2,iX3,:) )
 
     END DO
     END DO
@@ -341,25 +323,21 @@ CONTAINS
   END SUBROUTINE SetBoundaryConditions_X1
 
 
-  SUBROUTINE ComputeGravitationalMass &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Mass )
+  SUBROUTINE ComputeTotalBaryonMass &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, D, Mass )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)  :: &
-      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
     REAL(DP), INTENT(out) :: &
       Mass
 
-    INTEGER  :: iX1, iX2, iX3
-    REAL(DP) :: PF_D(nDOFX), PF_E(nDOFX), d3X
+    INTEGER :: iX1, iX2, iX3
 
-    ASSOCIATE &
-      ( dX1 => MeshX(1) % Width(1:nX(1)), &
-        dX2 => MeshX(2) % Width(1:nX(2)), &
-        dX3 => MeshX(3) % Width(1:nX(3)) )
+    ASSOCIATE( dX1 => MeshX(1) % Width(1:nX(1)) )
 
     ! --- Assuming 1D spherical symmetry ---
 
@@ -369,15 +347,11 @@ CONTAINS
     DO iX2 = 1, nX(2)
     DO iX1 = 1, nX(1)
 
-      d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3)
-
-      PF_D = U(:,iX1,iX2,iX3,6)
-      PF_E = U(:,iX1,iX2,iX3,7)
-
       Mass &
-        = Mass + d3X * SUM( WeightsX_q * ( PF_D + PF_E )    &
-                              * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                              / G(:,iX1,iX2,iX3,iGF_Psi) )
+        = Mass &
+            + FourPi * dX1(iX1) &
+                * SUM( WeightsX_q(:) * D(:,iX1,iX2,iX3) &
+                         * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
     END DO
     END DO
@@ -385,7 +359,7 @@ CONTAINS
 
     END ASSOCIATE ! dX1, etc.
 
-  END SUBROUTINE ComputeGravitationalMass
+  END SUBROUTINE ComputeTotalBaryonMass
 
 
 END MODULE GravitySolutionModule_CFA_Poseidon
