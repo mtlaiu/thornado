@@ -52,7 +52,8 @@ PROGRAM ApplicationDriver
     uCF, &
     uPF, &
     uAF, &
-    uDF
+    uDF, &
+    iPF_D
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     uGF
@@ -159,7 +160,7 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  ProgramName = 'Advection'
+!  ProgramName = 'Advection'
 !  ProgramName = 'Advection2D'
 !  ProgramName = 'RiemannProblem'
 !  ProgramName = 'RiemannProblem2D'
@@ -168,7 +169,7 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'KelvinHelmholtzInstability'
 !  ProgramName = 'StandingAccretionShock'
 !  ProgramName = 'StaticTOV'
-!  ProgramName = 'YahilCollapse'
+  ProgramName = 'YahilCollapse'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -441,13 +442,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 1
+  nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 1
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -462,7 +463,7 @@ PROGRAM ApplicationDriver
   SlopeTolerance            = 1.0d-6
   UseCharacteristicLimiting = .TRUE.
   UseTroubledCellIndicator  = .TRUE.
-  LimiterThresholdParameter = 0.03_DP
+  LimiterThresholdParameter = 0.015_DP
   UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
@@ -505,7 +506,7 @@ PROGRAM ApplicationDriver
 
     ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
                                  iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),1:5) )
+                                 iX_B0(3):iX_E0(3),1:7) )
 
     CALL InitializeGravitySolver_CFA_Poseidon
 
@@ -573,13 +574,15 @@ PROGRAM ApplicationDriver
 
   IF( RestartFileNumber .GE. 0 )THEN
 
-    CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
+    CALL ReadFieldsHDF &
+           ( RestartFileNumber, t, &
+             ReadFF_Option = .TRUE., ReadGF_Option = .TRUE. )
 
   END IF
 
-  iCycleD = 1
-  iCycleW = 1; dt_wrt = -1.0d0
-!!$  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
+  iCycleD = 10
+!!$  iCycleW = 1; dt_wrt = -1.0d0
+  dt_wrt = 1.0d-2 * ( t_end - t ); iCycleW = -1
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
@@ -742,6 +745,15 @@ PROGRAM ApplicationDriver
 !!$      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
 !!$
 !!$    END IF
+
+    IF( TRIM( ProgramName ) == 'YahilCollapse' )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e15_DP * Gram / Centimeter**3 ) ) EXIT
+
+    END IF
 
   END DO
 
