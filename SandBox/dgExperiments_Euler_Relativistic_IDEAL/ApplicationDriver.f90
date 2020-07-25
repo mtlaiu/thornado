@@ -441,13 +441,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 3
+  nNodes = 2
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -505,7 +505,7 @@ PROGRAM ApplicationDriver
 
     ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
                                  iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),1:5) )
+                                 iX_B0(3):iX_E0(3),1:7) )
 
     CALL InitializeGravitySolver_CFA_Poseidon
 
@@ -639,6 +639,11 @@ PROGRAM ApplicationDriver
   iCycle = 0
   Timer_Evolution = MPI_WTIME()
   DO WHILE( t .LT. t_end )
+
+CALL ComputeFromConserved_Euler_Relativistic &
+       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+if(any(upf(:,:,:,:,1).gt.1.0e15_DP*gram/centimeter**3))exit
 
     iCycle = iCycle + 1
 
