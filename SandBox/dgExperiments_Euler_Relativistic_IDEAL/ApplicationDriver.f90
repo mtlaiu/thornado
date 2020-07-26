@@ -630,10 +630,8 @@ PROGRAM ApplicationDriver
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           SuppressTally_Option = SuppressTally )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, &
+           uGF, uCF, SuppressTally_Option = SuppressTally )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -724,10 +722,7 @@ PROGRAM ApplicationDriver
         CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
         CALL ComputeTally_Euler_Relativistic_IDEAL &
-             ( iX_B0, iX_E0, &
-               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
         wrt = .FALSE.
 
@@ -787,10 +782,7 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL ComputeTally_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
 
@@ -834,6 +826,9 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
   WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
   CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'date:'
+  CALL EXECUTE_COMMAND_LINE( 'date' )
   WRITE(*,*)
 
 END PROGRAM ApplicationDriver
