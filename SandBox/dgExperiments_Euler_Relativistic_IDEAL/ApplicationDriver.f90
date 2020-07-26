@@ -401,8 +401,8 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'SPHERICAL'
 
-      CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
-      CentralPressure = 6.0e27_DP * Erg / Centimeter**3
+      CentralDensity  = 7.0e9_DP  * ( Gram / Centimeter**3 )
+      CentralPressure = 6.0e27_DP * ( Erg  / Centimeter**3 )
       CoreRadius      = 1.0e5_DP  * Kilometer
       CollapseTime    = 1.50e2_DP * Millisecond
 
@@ -729,17 +729,17 @@ PROGRAM ApplicationDriver
       END IF
     END IF
 
-!!$    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
-!!$
-!!$      CALL ComputeFromConserved_Euler_Relativistic &
-!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-!!$
-!!$      CALL ComputeAccretionShockDiagnostics &
-!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
-!!$
-!!$      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
-!!$
-!!$    END IF
+    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      CALL ComputeAccretionShockDiagnostics &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
+
+      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+
+    END IF
 
     IF( TRIM( ProgramName ) == 'YahilCollapse' )THEN
 
