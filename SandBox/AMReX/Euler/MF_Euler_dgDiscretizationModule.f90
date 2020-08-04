@@ -2,13 +2,13 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module,     ONLY: &
+  USE amrex_fort_module,                  ONLY: &
     AR => amrex_real
-  USE amrex_box_module,      ONLY: &
+  USE amrex_box_module,                   ONLY: &
     amrex_box
-  USE amrex_geometry_module, ONLY: &
+  USE amrex_geometry_module,              ONLY: &
     amrex_geometry
-  USE amrex_multifab_module, ONLY: &
+  USE amrex_multifab_module,              ONLY: &
     amrex_multifab,     &
     amrex_mfiter,       &
     amrex_mfiter_build, &
@@ -31,17 +31,17 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   ! --- Local Modules ---
 
-  USE MF_UtilitiesModule,                ONLY: &
+  USE MF_UtilitiesModule,                 ONLY: &
     amrex2thornado_Euler, &
     thornado2amrex_Euler
-  USE MyAmrModule,                       ONLY: &
+  USE InputParsingModule,                 ONLY: &
     nLevels, &
     DEBUG
-  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+  USE MF_Euler_BoundaryConditionsModule,  ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &
     MF_ApplyBoundaryConditions_Euler
-  USE TimersModule_AMReX_Euler,          ONLY: &
+  USE TimersModule_AMReX_Euler,           ONLY: &
     TimersStart_AMReX_Euler,      &
     TimersStop_AMReX_Euler,       &
     Timer_AMReX_Euler_InteriorBC, &
@@ -84,6 +84,18 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
+      ! --- Apply boundary conditions to interior domains ---
+
+      CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
+
+      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL MF_uDF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL TimersStop_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = .TRUE. )
 
       DO WHILE( MFI % next() )
@@ -117,6 +129,15 @@ CONTAINS
 
         CALL amrex2thornado_Euler( nDF, iX_B1, iX_E1, uDF, D )
 
+        ! --- Apply boundary conditions to physical boundaries ---
+
+        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+
+        IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_ApplyBoundaryConditions_Euler'
+
+        CALL MF_ApplyBoundaryConditions_Euler &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
         CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
         CALL thornado2amrex_Euler( nDF, iX_B1, iX_E1, uDF, D )
@@ -135,9 +156,14 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
+      ! --- Maybe don't need to apply boudnary conditions since
+      !     they're applied in the shock detector ---
+
       ! --- Apply boundary conditions to interior domains ---
 
       CALL TimersStart_AMReX_Euler( Timer_AMReX_Euler_InteriorBC )
+
+      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 

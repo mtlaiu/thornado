@@ -1,36 +1,36 @@
 PROGRAM ApplicationDriver
 
-  USE KindModule,                                       ONLY: &
+  USE KindModule, ONLY: &
     DP,   &
     Zero, &
     One,  &
     Two,  &
     Pi,   &
     TwoPi
-  USE ProgramInitializationModule,                      ONLY: &
+  USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
-  USE ReferenceElementModuleX,                          ONLY: &
+  USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
     FinalizeReferenceElementX
-  USE ReferenceElementModuleX_Lagrange,                 ONLY: &
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
-  USE EquationOfStateModule,                            ONLY: &
+  USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
-  USE ProgramHeaderModule,                              ONLY: &
+  USE ProgramHeaderModule, ONLY: &
     iX_B0,  &
     iX_B1,  &
     iX_E0,  &
     iX_E1,  &
     nDimsX, &
     nDOFX
-  USE GeometryComputationModule,                        ONLY: &
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
-  USE InitializationModule_Relativistic,                ONLY: &
+  USE InitializationModule_Relativistic, ONLY: &
     InitializeFields_Relativistic
-  USE Euler_SlopeLimiterModule_Relativistic_IDEAL,      ONLY: &
+  USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_IDEAL, &
     FinalizeSlopeLimiter_Euler_Relativistic_IDEAL,   &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
@@ -38,48 +38,49 @@ PROGRAM ApplicationDriver
     InitializePositivityLimiter_Euler_Relativistic_IDEAL, &
     FinalizePositivityLimiter_Euler_Relativistic_IDEAL,   &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
-  USE Euler_UtilitiesModule_Relativistic,               ONLY: &
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
-  USE InputOutputModuleHDF,                             ONLY: &
+  USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
     ReadFieldsHDF,  &
     WriteAccretionShockDiagnosticsHDF
-  USE FluidFieldsModule,                                ONLY: &
+  USE FluidFieldsModule, ONLY: &
     nCF, &
     nPF, &
     nAF, &
     uCF, &
     uPF, &
     uAF, &
-    uDF
-  USE GeometryFieldsModule,                             ONLY: &
+    uDF, &
+    iPF_D
+  USE GeometryFieldsModule, ONLY: &
     nGF, &
     uGF
-  USE GravitySolutionModule_CFA_Poseidon,               ONLY: &
+  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
     InitializeGravitySolver_CFA_Poseidon, &
     FinalizeGravitySolver_CFA_Poseidon,   &
     SolveGravity_CFA_Poseidon
-  USE Euler_dgDiscretizationModule,                     ONLY: &
+  USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
-  USE TimeSteppingModule_SSPRK,                         ONLY: &
+  USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK,   &
     UpdateFluid_SSPRK
-  USE UnitsModule,                                      ONLY: &
+  USE UnitsModule, ONLY: &
     Kilometer,   &
     SolarMass,   &
     Second,      &
     Millisecond, &
     Centimeter,  &
-    Erg,         &
     Gram,        &
+    Erg,         &
     UnitsDisplay
-  USE Euler_TallyModule_Relativistic_IDEAL,             ONLY: &
+  USE Euler_TallyModule_Relativistic_IDEAL, ONLY: &
     InitializeTally_Euler_Relativistic_IDEAL, &
     FinalizeTally_Euler_Relativistic_IDEAL,   &
     ComputeTally_Euler_Relativistic_IDEAL
-  USE TimersModule_Euler,                               ONLY: &
+  USE TimersModule_Euler, ONLY: &
     TimeIt_Euler,            &
     InitializeTimers_Euler,  &
     FinalizeTimers_Euler,    &
@@ -103,7 +104,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
   LOGICAL       :: OPTIMIZE = .FALSE.
-  LOGICAL       :: SuppressTally = .TRUE.
+  LOGICAL       :: SuppressTally = .FALSE.
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -400,8 +401,8 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'SPHERICAL'
 
-      CentralDensity  = 7.0e9_DP  * Gram / Centimeter**3
-      CentralPressure = 6.0e27_DP * Erg / Centimeter**3
+      CentralDensity  = 7.0e9_DP  * ( Gram / Centimeter**3 )
+      CentralPressure = 6.0e27_DP * ( Erg  / Centimeter**3 )
       CoreRadius      = 1.0e5_DP  * Kilometer
       CollapseTime    = 1.50e2_DP * Millisecond
 
@@ -441,13 +442,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 3
+  nNodes = 2
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -505,7 +506,7 @@ PROGRAM ApplicationDriver
 
     ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
                                  iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3),1:5) )
+                                 iX_B0(3):iX_E0(3),1:6) )
 
     CALL InitializeGravitySolver_CFA_Poseidon
 
@@ -629,10 +630,8 @@ PROGRAM ApplicationDriver
   wrt   = .FALSE.
 
   CALL InitializeTally_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           SuppressTally_Option = SuppressTally )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, &
+           uGF, uCF, SuppressTally_Option = SuppressTally )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -723,27 +722,33 @@ PROGRAM ApplicationDriver
         CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
         CALL ComputeTally_Euler_Relativistic_IDEAL &
-             ( iX_B0, iX_E0, &
-               uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-               Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
         wrt = .FALSE.
 
       END IF
     END IF
 
-!!$    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
-!!$
-!!$      CALL ComputeFromConserved_Euler_Relativistic &
-!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-!!$
-!!$      CALL ComputeAccretionShockDiagnostics &
-!!$             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
-!!$
-!!$      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
-!!$
-!!$    END IF
+    IF( TRIM( ProgramName ) .EQ. 'StandingAccretionShock' )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      CALL ComputeAccretionShockDiagnostics &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uAF, Power )
+
+      CALL WriteAccretionShockDiagnosticsHDF( t, Power )
+
+    END IF
+
+    IF( TRIM( ProgramName ) == 'YahilCollapse' )THEN
+
+      CALL ComputeFromConserved_Euler_Relativistic &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+      IF( ANY( uPF(:,:,:,:,iPF_D) .GT. 1.0e15_DP * Gram / Centimeter**3 ) ) EXIT
+
+    END IF
 
   END DO
 
@@ -777,10 +782,7 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL ComputeTally_Euler_Relativistic_IDEAL &
-         ( iX_B0, iX_E0, &
-           uGF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           uCF(:,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),:), &
-           Time = t, iState_Option = 1, DisplayTally_Option = .TRUE. )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
 
@@ -816,11 +818,17 @@ PROGRAM ApplicationDriver
   WRITE(*,'(2x,A)') 'git info'
   WRITE(*,'(2x,A)') '--------'
   WRITE(*,*)
+  WRITE(*,'(2x,A)') 'git branch:'
+  CALL EXECUTE_COMMAND_LINE( 'git branch' )
+  WRITE(*,*)
   WRITE(*,'(2x,A)') 'git describe --tags:'
   CALL EXECUTE_COMMAND_LINE( 'git describe --tags' )
   WRITE(*,*)
   WRITE(*,'(2x,A)') 'git rev-parse HEAD:'
   CALL EXECUTE_COMMAND_LINE( 'git rev-parse HEAD' )
+  WRITE(*,*)
+  WRITE(*,'(2x,A)') 'date:'
+  CALL EXECUTE_COMMAND_LINE( 'date' )
   WRITE(*,*)
 
 END PROGRAM ApplicationDriver

@@ -133,7 +133,7 @@ CONTAINS
     PF_V1 = ( CF_S1 / GF_Gm11 ) / ( CF_D * W * h )
     PF_V2 = ( CF_S2 / GF_Gm22 ) / ( CF_D * W * h )
     PF_V3 = ( CF_S3 / GF_Gm33 ) / ( CF_D * W * h )
-    PF_E  = CF_D * ( h - One ) / W - p
+    PF_E  = CF_D * ( eps + p / PF_D ) / W - p
     PF_Ne = CF_Ne / W
 
   END SUBROUTINE ComputePrimitive_Scalar
@@ -509,6 +509,14 @@ CONTAINS
     REAL(DP) :: EL, F_EL, ER, F_ER, a2, a1, a0
     REAL(DP) :: E_HLL, S_HLL, FE_HLL, FS_HLL
 
+#if defined HYDRO_RIEMANN_SOLVER_HLL
+
+    AlphaMiddle_Euler_Relativistic = 1.0e1_DP
+
+    RETURN
+
+#endif
+
     EL   = tauL + DL
     F_EL = F_tauL + F_DL
     ER   = tauR + DR
@@ -531,11 +539,11 @@ CONTAINS
     IF     ( ( ABS( a2 ) .LT. SqrtTiny ) .AND. ( ABS( a1 ) .LT. SqrtTiny ) &
             .AND. ( ABS( a0 ) .LT. SqrtTiny ) )THEN
 
-      STOP 'AlphaMiddle is undefined'
+      CALL DescribeError_Euler( 09 )
 
     ELSE IF( ( ABS( a2 ) .LT. SqrtTiny ) .AND. ( ABS( a1 ) .LT. SqrtTiny ) )THEN
 
-      STOP 'AlphaMiddle is undefined'
+      CALL DescribeError_Euler( 09, 'a0 < 0' )
 
     ELSE IF( ( ABS( a2 ) .LT. SqrtTiny ) .AND. ( ABS( a0 ) .LT. SqrtTiny ) )THEN
 
@@ -1132,7 +1140,7 @@ CONTAINS
         'za, zb = ', za, zb
       WRITE(*,'(8x,A,2ES15.6E3)') &
         'fa, fb = ', fa, fb
-      STOP
+      CALL DescribeError_Euler( 08 )
 
     END IF
 
