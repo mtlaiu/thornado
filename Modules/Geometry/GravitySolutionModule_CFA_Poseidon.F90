@@ -354,7 +354,7 @@ CONTAINS
       Mass
 
     INTEGER  :: iX1, iX2, iX3
-    REAL(DP) :: PF_D(nDOFX), PF_E(nDOFX), d3X
+    REAL(DP) :: d3X
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width(1:nX(1)), &
@@ -371,13 +371,11 @@ CONTAINS
 
       d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3)
 
-      PF_D = U(:,iX1,iX2,iX3,6)
-      PF_E = U(:,iX1,iX2,iX3,7)
-
       Mass &
-        = Mass + d3X * SUM( WeightsX_q * ( PF_D + PF_E )    &
-                              * G(:,iX1,iX2,iX3,iGF_SqrtGm) &
-                              / G(:,iX1,iX2,iX3,iGF_Psi) )
+        = Mass + d3X                               &
+            * SUM( WeightsX_q * U(:,iX1,iX2,iX3,6) &
+                     * G(:,iX1,iX2,iX3,iGF_Alpha)  &
+                     * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
     END DO
     END DO
