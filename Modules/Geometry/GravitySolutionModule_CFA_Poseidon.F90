@@ -166,8 +166,8 @@ CONTAINS
     CALL ComputeGravitationalMass &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GravitationalMass )
 
-    Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
-    AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
+    Psi_BC      = One!ConformalFactor( xR(1), GravitationalMass )
+    AlphaPsi_BC = One!LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
 
     INNER_BC_TYPES = [ "N", "N", "N", "N", "N" ]
     OUTER_BC_TYPES = [ "D", "D", "D", "D", "D" ]
@@ -180,7 +180,7 @@ CONTAINS
     CALL Poseidon_CFA_Set_Uniform_Boundary_Conditions &
            ( "O", OUTER_BC_TYPES, OUTER_BC_VALUES)
 
-    CALL Initialize_Flat_Space_Guess_Values() ! Possibly move this to init call 
+    CALL Initialize_Flat_Space_Guess_Values() ! Possibly move this to init call
 
     CALL Poseidon_Run()
 
@@ -311,10 +311,10 @@ CONTAINS
         X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNodeX1 )
 
         G(iNodeX,nX(1)+1,iX2,iX3,iGF_Alpha) &
-          = LapseFunction( X1, Mass )
+          = One!LapseFunction( X1, Mass )
 
         G(iNodeX,nX(1)+1,iX2,iX3,iGF_Psi) &
-          = ConformalFactor( X1, Mass )
+          = One!ConformalFactor( X1, Mass )
 
         G(iNodeX,nX(1)+1,iX2,iX3,iGF_Beta_1) &
           = Zero
