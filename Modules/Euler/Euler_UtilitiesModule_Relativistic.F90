@@ -1111,7 +1111,7 @@ CONTAINS
     INTEGER             :: ITERATION
     REAL(DP)            :: za, zb, zc, dz
     REAL(DP)            :: fa, fb, fc
-    REAL(DP), PARAMETER :: dz_min = 1.0e-8_DP
+    REAL(DP), PARAMETER :: dz_min = 1.0e-16_DP
     INTEGER,  PARAMETER :: MAX_IT = 4 - INT( LOG( dz_min) / LOG( Two ) )
 
     ! --- Eq. C23 ---
