@@ -442,7 +442,7 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 2
+  nNodes = 1
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
@@ -456,7 +456,7 @@ PROGRAM ApplicationDriver
 
   ! --- Slope Limiter ---
 
-  UseSlopeLimiter           = .TRUE.
+  UseSlopeLimiter           = .FALSE.
   SlopeLimiterMethod        = 'TVD'
   BetaTVD                   = 1.75d0
   BetaTVB                   = 0.0d0
@@ -468,7 +468,7 @@ PROGRAM ApplicationDriver
 
   ! --- Positivity Limiter ---
 
-  UsePositivityLimiter = .TRUE.
+  UsePositivityLimiter = .FALSE.
   Min_1                = 1.0d-13
   Min_2                = 1.0d-13
 
@@ -609,8 +609,8 @@ PROGRAM ApplicationDriver
 
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
 
-    CALL ComputeFromConserved_Euler_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+!!$    CALL ComputeFromConserved_Euler_Relativistic &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -618,6 +618,8 @@ PROGRAM ApplicationDriver
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
   END IF
+
+stop 'ApplicationDriver (line 622)'
 
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
