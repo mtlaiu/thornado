@@ -42,7 +42,7 @@ MODULE GravitySolutionModule_CFA_Poseidon
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
   USE UnitsModule, ONLY: &
-    SolarMass
+    SolarMass,centimeter,gram,second,erg,kilometer
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
@@ -143,6 +143,18 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_CFA
 
+open(unit=101,file='tE.dat')
+open(unit=102,file='tS.dat')
+open(unit=103,file='tS1.dat')
+
+write(101,*) U(:,:,:,:,1) / ( Erg / Centimeter**3 )
+write(102,*) U(:,:,:,:,2) / ( Erg / Centimeter**3 )
+write(103,*) U(:,:,:,:,3) / ( Gram / Centimeter**2 / Second )
+
+close(103)
+close(102)
+close(101)
+
     ! Set Source Values !
     CALL Poseidon_Input_Sources &
            ( 0, 0, 0,                         &
@@ -193,6 +205,17 @@ CONTAINS
              CFA_Lapse     = Tmp_Lapse,        &
              CFA_ConFactor = Tmp_ConFact,      &
              CFA_Shift     = Tmp_Shift         )
+open(unit=101,file='tAlpha.dat')
+open(unit=102,file='tPsi.dat')
+open(unit=103,file='tBeta1.dat')
+
+write(101,*) Tmp_Lapse
+write(102,*) Tmp_ConFact
+write(103,*) Tmp_Shift / ( Kilometer / Second )
+
+close(103)
+close(102)
+close(101)
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
