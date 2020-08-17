@@ -609,8 +609,8 @@ PROGRAM ApplicationDriver
 
     CALL TimersStart_Euler( Timer_Euler_InputOutput )
 
-!!$    CALL ComputeFromConserved_Euler_Relativistic &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+    CALL ComputeFromConserved_Euler_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )

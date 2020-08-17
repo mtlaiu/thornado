@@ -17,7 +17,6 @@ MODULE Poseidon_UtilitiesModule
     iGF_Beta_3,   &
     nGF
   USE FluidFieldsModule, ONLY: &
-upf_a =>upf,&
     nCF,    &
     iCF_D,  &
     iCF_S1, &
@@ -68,28 +67,24 @@ CONTAINS
 
        END DO
 
-       DO iGF = 1, nPF
-         uPF(:,iGF) = uPF_A(:,iX1,iX2,iX3,iGF)
-       END DO
-
        ! --- Compute trace of stress tensor ---
 
-!!$       CALL ComputePrimitive_Euler_Relativistic &
-!!$              ( U  (:,iX1,iX2,iX3,iCF_D ), &
-!!$                U  (:,iX1,iX2,iX3,iCF_S1), &
-!!$                U  (:,iX1,iX2,iX3,iCF_S2), &
-!!$                U  (:,iX1,iX2,iX3,iCF_S3), &
-!!$                U  (:,iX1,iX2,iX3,iCF_E ), &
-!!$                U  (:,iX1,iX2,iX3,iCF_Ne), &
-!!$                uPF(:,iPF_D ), &
-!!$                uPF(:,iPF_V1), &
-!!$                uPF(:,iPF_V2), &
-!!$                uPF(:,iPF_V3), &
-!!$                uPF(:,iPF_E ), &
-!!$                uPF(:,iPF_Ne), &
-!!$                uGF(:,iGF_Gm_dd_11), &
-!!$                uGF(:,iGF_Gm_dd_22), &
-!!$                uGF(:,iGF_Gm_dd_33) )
+       CALL ComputePrimitive_Euler_Relativistic &
+              ( U  (:,iX1,iX2,iX3,iCF_D ), &
+                U  (:,iX1,iX2,iX3,iCF_S1), &
+                U  (:,iX1,iX2,iX3,iCF_S2), &
+                U  (:,iX1,iX2,iX3,iCF_S3), &
+                U  (:,iX1,iX2,iX3,iCF_E ), &
+                U  (:,iX1,iX2,iX3,iCF_Ne), &
+                uPF(:,iPF_D ), &
+                uPF(:,iPF_V1), &
+                uPF(:,iPF_V2), &
+                uPF(:,iPF_V3), &
+                uPF(:,iPF_E ), &
+                uPF(:,iPF_Ne), &
+                uGF(:,iGF_Gm_dd_11), &
+                uGF(:,iGF_Gm_dd_22), &
+                uGF(:,iGF_Gm_dd_33) )
 
        CALL ComputePressureFromPrimitive_IDEAL &
               ( uPF(:,iPF_D), uPF(:,iPF_E), uPF(:,iPF_Ne), Pressure )
