@@ -28,6 +28,12 @@ MODULE InitializationModule_Relativistic
   USE MeshModule,                         ONLY: &
     MeshX, &
     NodeCoordinate
+  USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
+    ComputeGravitationalPotential
+  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
+    SolveGravity_CFA_Poseidon
+  USE GeometryComputationModule,          ONLY: &
+    ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule,               ONLY: &
     nGF,          &
     uGF,          &
@@ -89,6 +95,8 @@ MODULE InitializationModule_Relativistic
     GetQuadrature
   USE PolynomialBasisModule_Lagrange,     ONLY: &
     LagrangeP
+  USE Poseidon_UtilitiesModule,           ONLY: &
+    ComputeSourceTerms_Poseidon
 
   IMPLICIT NONE
   PRIVATE
@@ -1974,9 +1982,12 @@ CONTAINS
     CHARACTER(LEN=64) :: FileName
     INTEGER           :: nLines
 
-    INTEGER               :: iX1, iX2, iX3, iNodeX, iNodeX1, iX_L
-    REAL(DP)              :: K, C_X, C_D, C_V, C_M, R, XX
-    REAL(DP), ALLOCATABLE :: X(:), D(:), V(:), M(:)
+    INTEGER               :: iX1, iX2, iX3, iNodeX, iNodeX1, iNodeX2, iX_L
+    REAL(DP)              :: K, C_X, C_D, C_V, C_M, R, XX, X1, X2, EnclosedMass
+    REAL(DP), ALLOCATABLE :: X(:), D(:), V(:), M(:), U_Poseidon(:,:,:,:,:)
+    LOGICAL               :: CONVERGED
+    REAL(DP)              :: dAlpha, dPsi
+    INTEGER               :: ITER
 
     K = CentralPressure / CentralDensity**( Gamma_IDEAL )
 
@@ -2042,41 +2053,43 @@ CONTAINS
 
     CLOSE(100)
 
+    EnclosedMass = M(nLines) * C_M
+
     WRITE(*,'(6x,A,ES10.3E3,A)') &
       'Mass:                ', &
-      M(nLines) * C_M / SolarMass, ' Msun'
+      EnclosedMass / SolarMass, ' Msun'
     WRITE(*,*)
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E1(1)
 
-     DO iNodeX = 1, nDOFX
+      DO iNodeX = 1, nDOFX
 
-       iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
 
-       R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-       XX = C_X * R
+        R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        XX = C_X * R
 
-       iX_L = Locate( XX, X, nLines )
+        iX_L = Locate( XX, X, nLines )
 
-       uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
-         = C_D * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                       D(iX_L), D(iX_L+1) )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+          = C_D * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                        D(iX_L), D(iX_L+1) )
 
-       uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-         = C_V * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                       V(iX_L), V(iX_L+1) )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+          = C_V * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                        V(iX_L), V(iX_L+1) )
 
-       uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
 
-       uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
 
-       uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
-         = K * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
-             / ( Gamma_IDEAL - One )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
+          = K * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
+              / ( Gamma_IDEAL - One )
 
-     END DO
+      END DO
 
       CALL ComputePressureFromPrimitive_IDEAL &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
@@ -2102,6 +2115,107 @@ CONTAINS
     DEALLOCATE( V )
     DEALLOCATE( D )
     DEALLOCATE( X )
+
+    ! --- Iterate to incorporate gravity in initial conditions ---
+
+    ! - Newtonian approximation (maybe move this to loop above) -
+
+    CALL ComputeGravitationalPotential &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, EnclosedMass )
+
+    uGF(:,:,:,:,iGF_Alpha) = One +        uGF(:,:,:,:,iGF_Phi_N)
+    uGF(:,:,:,:,iGF_Psi)   = One - Half * uGF(:,:,:,:,iGF_Phi_N)
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E1(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        uGF(iNodeX,iX1,iX2,iX3,iGF_h_1) &
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**2
+
+        uGF(iNodeX,iX1,iX2,iX3,iGF_h_2) &
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**2 * X1
+
+        uGF(iNodeX,iX1,iX2,iX3,iGF_h_3) &
+          = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**2 * X1 * SIN( X2 )
+
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) = Zero
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) = Zero
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) = Zero
+
+      END DO
+
+      CALL ComputeGeometryX_FromScaleFactors( uGF(:,iX1,iX2,iX3,:) )
+
+    END DO
+    END DO
+    END DO
+
+    ALLOCATE( U_Poseidon(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3),6) )
+
+    CONVERGED = .FALSE.
+    ITER = 0
+
+    DO WHILE( .NOT. CONVERGED )
+
+      ITER = ITER + 1
+
+      CALL ComputeSourceTerms_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, U_Poseidon )
+
+      dAlpha = MINVAL( uGF(:,:,:,:,iGF_Alpha) )
+      dPsi   = MAXVAL( uGF(:,:,:,:,iGF_Psi)   )
+
+      CALL SolveGravity_CFA_Poseidon &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_Poseidon )
+
+      dAlpha = ABS( dAlpha - MINVAL( uGF(:,:,:,:,iGF_Alpha) ) ) &
+                 / MINVAL( uGF(:,:,:,:,iGF_Alpha) )
+      dPsi   = ABS( dPsi   - MAXVAL( uGF(:,:,:,:,iGF_Psi)   ) ) &
+                 / MAXVAL( uGF(:,:,:,:,iGF_Psi)   )
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E1(1)
+
+        CALL ComputeConserved_Euler_Relativistic &
+               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                 uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                 uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uAF(:,iX1,iX2,iX3,iAF_P) )
+
+      END DO
+      END DO
+      END DO
+
+      IF( MAX( dAlpha, dPsi ) .LT. 1.0e-15_DP ) CONVERGED = .TRUE.
+
+      IF( ITER .EQ. 10 )THEN
+
+        WRITE(*,*) 'Could not initialize fields. Exiting...'
+        STOP
+
+      END IF
+
+    END DO
+
+    DEALLOCATE( U_Poseidon )
 
   END SUBROUTINE InitializeFields_YahilCollapse_FromFile
 
