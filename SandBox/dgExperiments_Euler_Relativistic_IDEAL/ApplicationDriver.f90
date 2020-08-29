@@ -148,12 +148,6 @@ PROGRAM ApplicationDriver
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
-  swX               = [ 0, 0, 0 ]
-  RestartFileNumber = -1
-  t                 = 0.0_DP
-  ZoomX             = 1.0_DP
-  SelfGravity       = .FALSE.
-
 !  ProgramName = 'Advection'
 !  ProgramName = 'Advection2D'
 !  ProgramName = 'RiemannProblem'
@@ -164,6 +158,12 @@ PROGRAM ApplicationDriver
 !  ProgramName = 'StandingAccretionShock'
 !  ProgramName = 'StaticTOV'
   ProgramName = 'YahilCollapse'
+
+  swX               = [ 0, 0, 0 ]
+  RestartFileNumber = -1
+  t                 = 0.0_DP
+  ZoomX             = 1.0_DP
+  SelfGravity       = .FALSE.
 
   SELECT CASE ( TRIM( ProgramName ) )
 
