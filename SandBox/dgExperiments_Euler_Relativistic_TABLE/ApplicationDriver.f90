@@ -27,6 +27,10 @@ PROGRAM ApplicationDriver
     ComputeGeometryX
   USE InitializationModule, ONLY: &
     InitializeFields
+  USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
+    InitializeSlopeLimiter_Euler_Relativistic_TABLE, &
+    FinalizeSlopeLimiter_Euler_Relativistic_TABLE,   &
+    ApplySlopeLimiter_Euler_Relativistic_TABLE
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
     ComputeTimeStep_Euler_Relativistic
@@ -58,7 +62,8 @@ PROGRAM ApplicationDriver
   USE UnitsModule, ONLY: &
     UnitsDisplay, &
     Kilometer,    &
-    Second
+    Second,       &
+    Millisecond
 
   IMPLICIT NONE
 
@@ -66,9 +71,11 @@ PROGRAM ApplicationDriver
 
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: AdvectionProfile
+  CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(64) :: EosTableName
   LOGICAL       :: wrt
+  LOGICAL       :: OPTIMIZE = .FALSE.
   INTEGER       :: iCycle, iCycleD, iCycleW
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
@@ -80,13 +87,26 @@ PROGRAM ApplicationDriver
   LOGICAL       :: ActivateUnits = .TRUE.
   REAL(DP)      :: Timer_Evolution
 
+  ! --- Slope Limiter ---
+
+  LOGICAL       :: UseSlopeLimiter
+  LOGICAL       :: UseCharacteristicLimiting
+  LOGICAL       :: UseTroubledCellIndicator
+  LOGICAL       :: UseConservativeCorrection
+  CHARACTER(4)  :: SlopeLimiterMethod
+  REAL(DP)      :: SlopeTolerance
+  REAL(DP)      :: BetaTVD, BetaTVB
+  REAL(DP)      :: LimiterThresholdParameter
+
+
   TimeIt_Euler = .TRUE.
   CALL InitializeTimers_Euler
   CALL TimersStart_Euler( Timer_Euler_Initialize )
 
   EosTableName = 'wl-EOS-SFHo-25-50-100.h5'
 
-  ProgramName  = 'Advection'
+!!$  ProgramName  = 'Advection'
+  ProgramName  = 'RiemannProblem'
 
   swX               = [ 0, 0, 0 ]
   RestartFileNumber = -1
@@ -109,12 +129,27 @@ PROGRAM ApplicationDriver
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
       xR  = [ 1.0e2_DP, 1.0e2_DP, 1.0e2_DP ] * Kilometer
 
+    CASE( 'RiemannProblem' )
+
+      RiemannProblemName = 'Sod'
+
+      t_end = 2.5e-2_DP * Millisecond
+      bcX   = [ 2, 0, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 128, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ -5.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
+      xR  = [ +5.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+
     CASE DEFAULT
 
       WRITE(*,*)
       WRITE(*,'(A21,A)') 'Invalid ProgramName: ', ProgramName
       WRITE(*,'(A)')     'Valid choices:'
       WRITE(*,'(A)')     '  Advection'
+      WRITE(*,'(A)')     '  RiemannProblem'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
@@ -122,17 +157,29 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 1
+  nNodes = 2
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 1
+  nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
   CFL = 0.5_DP ! Cockburn & Shu, (2001), JSC, 16, 173
+
+  ! --- Slope Limiter ---
+
+  UseSlopeLimiter           = .TRUE.
+  SlopeLimiterMethod        = 'TVD'
+  BetaTVD                   = 1.75d0
+  BetaTVB                   = 0.0d0
+  SlopeTolerance            = 1.0d-6
+  UseCharacteristicLimiting = .FALSE.
+  UseTroubledCellIndicator  = .FALSE.
+  LimiterThresholdParameter = 0.015_DP
+  UseConservativeCorrection = .TRUE.
 
   ! === End of User Input ===
 
@@ -173,6 +220,26 @@ PROGRAM ApplicationDriver
            EquationOfStateTableName_Option &
              = TRIM( EosTableName ) )
 
+  CALL InitializeSlopeLimiter_Euler_Relativistic_TABLE &
+         ( UseSlopeLimiter_Option &
+             = UseSlopeLimiter, &
+           SlopeLimiterMethod_Option &
+             = TRIM( SlopeLimiterMethod ), &
+           BetaTVD_Option &
+             = BetaTVD, &
+           BetaTVB_Option &
+             = BetaTVB, &
+           SlopeTolerance_Option &
+             = SlopeTolerance, &
+           UseCharacteristicLimiting_Option &
+             = UseCharacteristicLimiting, &
+           UseTroubledCellIndicator_Option &
+             = UseTroubledCellIndicator, &
+           LimiterThresholdParameter_Option &
+             = LimiterThresholdParameter, &
+           UseConservativeCorrection_Option &
+             = UseConservativeCorrection )
+
   CALL InitializeFluid_SSPRK( nStages = nStagesSSPRK )
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
@@ -195,6 +262,9 @@ PROGRAM ApplicationDriver
 
   IF( dt_wrt .GT. Zero .AND. iCycleW .GT. 0 ) &
     STOP 'dt_wrt and iCycleW cannot both be present'
+
+  CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
   CALL TimersStop_Euler( Timer_Euler_Initialize )
 
@@ -327,6 +397,8 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL TimersStart_Euler( Timer_Euler_Finalize )
+
+  CALL FinalizeSlopeLimiter_Euler_Relativistic_TABLE
 
   CALL FinalizeFluid_SSPRK
 
